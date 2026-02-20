@@ -1,5 +1,6 @@
 import {
   parseDashboardData,
+  parseSemData,
   wowPct,
   fmtDollar,
   fmtPct,
@@ -140,7 +141,7 @@ function generateWinsAlerts(
     if (salesWow !== null && salesWow < -0.3) {
       alerts.push({
         brand: curr.brand,
-        message: `Sales down ${Math.abs(salesWow * 100).toFixed(0)}% WoW (${fmtDollar(prevSales)} → ${fmtDollar(curr.sales)}) — investigate`,
+        message: `Sales down ${Math.abs(salesWow * 100).toFixed(0)}% WoW (${fmtDollar(prevSales)} → ${fmtDollar(curr.sales)})`,
       });
     }
 
@@ -161,6 +162,7 @@ function generateWinsAlerts(
 export default function DashboardPage() {
   const data = parseDashboardData();
   const { weeks, currentWeek, previousWeek } = data;
+  const semData = parseSemData();
 
   const curr = currentWeek;
   const prev = previousWeek;
@@ -185,7 +187,7 @@ export default function DashboardPage() {
       prev: prevBrandMap.get(name) ?? null,
       name,
     }))
-    .filter((r) => r.curr !== null || r.prev !== null)
+    .filter((r) => (r.curr?.sales ?? 0) > 0 || (r.prev?.sales ?? 0) > 0)
     .sort((a, b) => (b.curr?.sales ?? 0) - (a.curr?.sales ?? 0));
 
   // Wins & alerts
@@ -394,6 +396,11 @@ export default function DashboardPage() {
                   const flagZeroSalesSpend = (c?.adSpend ?? 0) > 0 && currSales === 0;
                   const flagged = flagAcos || flagZeroSalesSpend;
 
+                  const flagReasons = [
+                    flagAcos && acos !== null ? `ACoS at ${(acos * 100).toFixed(0)}% — above 70% threshold` : null,
+                    flagZeroSalesSpend ? `${fmtDollar(c?.adSpend ?? 0)} ad spend with $0 sales` : null,
+                  ].filter(Boolean).join(' · ');
+
                   return (
                     <tr
                       key={name}
@@ -401,7 +408,7 @@ export default function DashboardPage() {
                     >
                       <td className="px-3.5 py-2.5 font-sans font-medium text-[13px] text-white whitespace-nowrap">
                         {flagged && (
-                          <span className="mr-1.5 text-amber-400" title="Needs attention">⚠️</span>
+                          <span className="mr-1.5 text-amber-400 cursor-help" title={flagReasons}>⚠️</span>
                         )}
                         {name}
                       </td>
@@ -439,6 +446,115 @@ export default function DashboardPage() {
             </table>
           </div>
         </div>
+
+        {/* ── SEM CAMPAIGNS ──────────────────────────────────── */}
+        <SectionTitle>🔎 SEM Campaigns (Sponsored Search)</SectionTitle>
+
+        {/* SEM Scorecards */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+          <ScoreCard
+            label="SEM Ad Spend"
+            value={fmtDollar(semData.currentWeek.adSpend)}
+            prevLabel={`Prev: ${fmtDollar(semData.previousWeek.adSpend)}`}
+            wow={wowArrow(wowPct(semData.currentWeek.adSpend, semData.previousWeek.adSpend), true)}
+            topColor={semData.currentWeek.adSpend <= semData.previousWeek.adSpend ? '#22C55E' : '#EF4444'}
+          />
+          <ScoreCard
+            label="SEM Ad Sales"
+            value={fmtDollar(semData.currentWeek.adSales)}
+            prevLabel={`Prev: ${fmtDollar(semData.previousWeek.adSales)}`}
+            wow={wowArrow(wowPct(semData.currentWeek.adSales, semData.previousWeek.adSales))}
+            topColor={semData.currentWeek.adSales >= semData.previousWeek.adSales ? '#22C55E' : '#EF4444'}
+          />
+          <ScoreCard
+            label="SEM ACoS"
+            value={fmtPct(semData.currentWeek.acos)}
+            prevLabel={`Prev: ${fmtPct(semData.previousWeek.acos)}`}
+            wow={acosWowArrow(semData.currentWeek.acos, semData.previousWeek.acos)}
+            topColor={
+              semData.currentWeek.acos === null ? '#374151'
+              : semData.currentWeek.acos < 0.35 ? '#22C55E'
+              : semData.currentWeek.acos < 0.55 ? '#F59E0B'
+              : '#EF4444'
+            }
+          />
+          <ScoreCard
+            label="SEM ROAS"
+            value={fmtRoas(semData.currentWeek.roas)}
+            prevLabel={`Prev: ${fmtRoas(semData.previousWeek.roas)}`}
+            wow={wowArrow(wowPct(semData.currentWeek.roas ?? 0, semData.previousWeek.roas ?? 0))}
+            topColor={(semData.currentWeek.roas ?? 0) >= (semData.previousWeek.roas ?? 0) ? '#22C55E' : '#EF4444'}
+          />
+        </div>
+
+        {/* SEM Campaign Table */}
+        {(() => {
+          const prevSemMap = new Map(
+            semData.previousWeek.campaigns.map((c) => [c.campaign, c])
+          );
+          const semRows = semData.currentWeek.campaigns
+            .filter((c) => c.adSpend > 0 || c.adSales > 0)
+            .sort((a, b) => b.adSpend - a.adSpend)
+            .map((c) => ({ curr: c, prev: prevSemMap.get(c.campaign) ?? null }));
+
+          return (
+            <div className="bg-dash-card border border-white/[0.08] rounded-lg overflow-hidden mb-2">
+              <div className="table-scroll">
+                <table className="w-full border-collapse text-[12px]">
+                  <thead>
+                    <tr className="bg-dash-card2 border-b border-white/[0.08]">
+                      <th className="text-left px-3.5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.8px] text-gray-400 whitespace-nowrap">Campaign</th>
+                      <th className="text-right px-3.5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.8px] text-gray-400 whitespace-nowrap">Ad Spend</th>
+                      <th className="text-right px-3.5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.8px] text-gray-400 whitespace-nowrap">Prev Spend</th>
+                      <th className="text-right px-3.5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.8px] text-gray-400 whitespace-nowrap">WoW Δ%</th>
+                      <th className="text-right px-3.5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.8px] text-gray-400 whitespace-nowrap">Ad Sales</th>
+                      <th className="text-right px-3.5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.8px] text-gray-400 whitespace-nowrap">ACoS</th>
+                      <th className="text-right px-3.5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.8px] text-gray-400 whitespace-nowrap">ROAS</th>
+                      <th className="text-right px-3.5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.8px] text-gray-400 whitespace-nowrap">Impressions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {semRows.map(({ curr, prev }) => {
+                      const spendWowVal = wowPct(curr.adSpend, prev?.adSpend ?? 0);
+                      const spendWow = wowArrow(spendWowVal, true); // lower spend = green
+                      return (
+                        <tr
+                          key={curr.campaign}
+                          className="border-b border-white/[0.05] hover:bg-white/[0.02] transition-colors last:border-0"
+                        >
+                          <td className="px-3.5 py-2.5 font-sans font-medium text-[13px] text-white">
+                            {curr.displayName}
+                          </td>
+                          <td className="px-3.5 py-2.5 text-right font-mono text-[#E8EDF5]">
+                            {fmtDollar(curr.adSpend)}
+                          </td>
+                          <td className="px-3.5 py-2.5 text-right font-mono text-gray-400">
+                            {prev ? fmtDollar(prev.adSpend) : '—'}
+                          </td>
+                          <td className={`px-3.5 py-2.5 text-right font-mono font-semibold ${spendWow.cls}`}>
+                            {spendWowVal === null ? '—' : `${spendWow.symbol} ${Math.abs(spendWowVal * 100).toFixed(0)}%`}
+                          </td>
+                          <td className="px-3.5 py-2.5 text-right font-mono text-[#E8EDF5]">
+                            {curr.adSales > 0 ? fmtDollar(curr.adSales) : '—'}
+                          </td>
+                          <td className={`px-3.5 py-2.5 text-right font-mono font-semibold ${acosColorInline(curr.acos)}`}>
+                            {curr.acos !== null && curr.acos > 0 ? fmtPct(curr.acos) : '—'}
+                          </td>
+                          <td className="px-3.5 py-2.5 text-right font-mono text-[#E8EDF5]">
+                            {fmtRoas(curr.roas)}
+                          </td>
+                          <td className="px-3.5 py-2.5 text-right font-mono text-gray-400">
+                            {curr.impressions > 0 ? curr.impressions.toLocaleString('en-US') : '—'}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* ── WINS & ALERTS ──────────────────────────────────── */}
         <SectionTitle>🔍 Wins &amp; Alerts</SectionTitle>
