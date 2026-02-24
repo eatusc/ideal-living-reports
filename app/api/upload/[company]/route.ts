@@ -2,10 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
 
+// Maps company slug → local data folder name
 const COMPANY_DIRS: Record<string, string> = {
   'rpd-walmart': 'rpd',
-  'elevate': 'elevate',
-  'rpd-hd': 'rpd-hd',
+  'elevate':     'elevate',
+  'rpd-hd':      'rpd-hd',
 };
 
 const XLSX_CONTENT_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
@@ -39,20 +40,37 @@ export async function POST(
   const buffer = Buffer.from(await file.arrayBuffer());
   const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
 
+  // Blob paths use the company slug so it's clear in the Vercel dashboard:
+  //   rpd-walmart/latest.xlsx
+  //   rpd-walmart/2026-02-24.xlsx
+  //   elevate/latest.xlsx
+  //   rpd-hd/latest.xlsx
+  const blobLatest = `${company}/latest.xlsx`;
+  const blobBackup = `${company}/${today}.xlsx`;
+
   if (process.env.BLOB_READ_WRITE_TOKEN) {
-    // Vercel Blob — overwrite latest + save dated backup
     const { put } = await import('@vercel/blob');
-    await put(`${dir}/latest.xlsx`, buffer, {
+
+    const { url } = await put(blobLatest, buffer, {
       access: 'public',
       addRandomSuffix: false,
       contentType: XLSX_CONTENT_TYPE,
     });
-    await put(`${dir}/${today}.xlsx`, buffer, {
+
+    await put(blobBackup, buffer, {
       access: 'public',
       addRandomSuffix: false,
       contentType: XLSX_CONTENT_TYPE,
     });
-    return NextResponse.json({ ok: true, saved: `${dir}/latest.xlsx`, backup: `${dir}/${today}.xlsx`, storage: 'blob' });
+
+    return NextResponse.json({
+      ok: true,
+      report: company,
+      saved: blobLatest,
+      backup: blobBackup,
+      url,
+      storage: 'blob',
+    });
   }
 
   // Local dev — write to disk
@@ -62,5 +80,11 @@ export async function POST(
   fs.writeFileSync(path.join(dataDir, 'latest.xlsx'), buffer);
   fs.writeFileSync(path.join(dataDir, `${today}.xlsx`), buffer);
 
-  return NextResponse.json({ ok: true, saved: 'latest.xlsx', backup: `${today}.xlsx`, storage: 'local' });
+  return NextResponse.json({
+    ok: true,
+    report: company,
+    saved: `data/${dir}/latest.xlsx`,
+    backup: `data/${dir}/${today}.xlsx`,
+    storage: 'local',
+  });
 }

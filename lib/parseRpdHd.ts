@@ -42,7 +42,7 @@ export interface RpdHdDashboardData {
 // ─── Parser ───────────────────────────────────────────────────────────────────
 
 export async function parseRpdHdData(): Promise<RpdHdDashboardData> {
-  const buffer = await getExcelBuffer('rpd-hd');
+  const buffer = await getExcelBuffer('rpd-hd'); // blob key: rpd-hd/latest.xlsx
   const wb = XLSX.read(buffer, { type: 'buffer' });
   const ws = wb.Sheets['ALL - 2026 - Orange Access'];
 

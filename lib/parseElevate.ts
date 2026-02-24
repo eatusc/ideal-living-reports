@@ -219,7 +219,7 @@ function parseSem(wb: XLSX.WorkBook): { currentWeek: ElevateSemWeek; previousWee
 // ─── Main export ─────────────────────────────────────────────────────────────
 
 export async function parseElevateData(): Promise<ElevateDashboardData> {
-  const buffer = await getExcelBuffer('elevate');
+  const buffer = await getExcelBuffer('elevate'); // blob key: elevate/latest.xlsx
   const wb = XLSX.read(buffer, { type: 'buffer' });
 
   const amazonWeeks = parseAmazon(wb);

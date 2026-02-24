@@ -88,7 +88,7 @@ export function safeRate(val: unknown): number | null {
 }
 
 export async function parseDashboardData(): Promise<DashboardData> {
-  const buffer = await getExcelBuffer('rpd');
+  const buffer = await getExcelBuffer('rpd-walmart');
   const wb = XLSX.read(buffer, { type: 'buffer' });
   const ws = wb.Sheets['WALMART_weekly_reporting_2026-B'];
 
@@ -183,7 +183,7 @@ export async function parseDashboardData(): Promise<DashboardData> {
 }
 
 export async function parseSemData(): Promise<SemDashboardData> {
-  const buffer = await getExcelBuffer('rpd');
+  const buffer = await getExcelBuffer('rpd-walmart');
   const wb = XLSX.read(buffer, { type: 'buffer' });
   const ws = wb.Sheets['SEM Campaigns Data 2026'];
 
