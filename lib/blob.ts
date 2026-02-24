@@ -1,4 +1,4 @@
-import { list, getDownloadUrl } from '@vercel/blob';
+import { list } from '@vercel/blob';
 import fs from 'fs';
 import path from 'path';
 
@@ -29,9 +29,10 @@ export async function getExcelBuffer(company: string): Promise<Buffer> {
       if (blobs.length === 0) {
         throw new Error(`No file uploaded yet for "${company}". Upload an Excel file to get started.`);
       }
-      // getDownloadUrl generates a signed URL that works for both private and public stores
-      const downloadUrl = await getDownloadUrl(blobs[0].url);
-      const res = await fetch(downloadUrl);
+      // Fetch with Bearer token — required for private store server-side reads
+      const res = await fetch(blobs[0].url, {
+        headers: { Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}` },
+      });
       if (!res.ok) throw new Error(`Failed to fetch "${company}" data from storage (${res.status})`);
       return Buffer.from(await res.arrayBuffer());
     } catch (err) {
