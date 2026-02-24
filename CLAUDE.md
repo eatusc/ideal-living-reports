@@ -25,6 +25,17 @@ This app runs **locally only** (`npm run dev`). File uploads write to the local 
 npm run dev   # http://localhost:3000
 ```
 
+## Vercel Deployment
+
+This app uses Next.js SSR (no static export). Vercel project settings must be configured correctly or deploys will fail.
+
+**Required Vercel project settings** (Settings → Build & Output Settings):
+- **Framework Preset**: Next.js
+- **Output Directory**: ← leave blank (do not set)
+- `vercel.json` should stay as `{}` — do not add `outputDirectory`
+
+**If you see "No Output Directory found" errors**: the Vercel dashboard has a stale Output Directory override. Clear it in project settings and redeploy. This typically happens after switching from static export (`output: 'export'`) to SSR.
+
 ## Key Files
 
 | File | Purpose |
