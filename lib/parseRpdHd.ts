@@ -1,11 +1,6 @@
 import * as XLSX from 'xlsx';
-import path from 'path';
-import fs from 'fs';
 import { safeNum, safeRate, excelSerialToDateStr } from '@/lib/parseExcel';
-
-function getFilePath(): string {
-  return path.join(process.cwd(), 'data', 'rpd-hd', 'latest.xlsx');
-}
+import { getExcelBuffer } from '@/lib/blob';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -46,13 +41,8 @@ export interface RpdHdDashboardData {
 
 // ─── Parser ───────────────────────────────────────────────────────────────────
 
-export function parseRpdHdData(): RpdHdDashboardData {
-  const filePath = getFilePath();
-  if (!fs.existsSync(filePath)) {
-    throw new Error(`RPD-HD data file not found at ${filePath}`);
-  }
-
-  const buffer = fs.readFileSync(filePath);
+export async function parseRpdHdData(): Promise<RpdHdDashboardData> {
+  const buffer = await getExcelBuffer('rpd-hd');
   const wb = XLSX.read(buffer, { type: 'buffer' });
   const ws = wb.Sheets['ALL - 2026 - Orange Access'];
 

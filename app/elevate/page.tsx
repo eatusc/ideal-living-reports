@@ -217,12 +217,12 @@ function WalmartTrendTable({ weeks }: { weeks: ElevateWalmartWeekData[] }) {
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-export default function ElevatePage() {
+export default async function ElevatePage() {
   let data;
   let parseError: string | null = null;
 
   try {
-    data = parseElevateData();
+    data = await parseElevateData();
   } catch (err) {
     parseError = err instanceof Error ? err.message : 'Failed to load data';
   }

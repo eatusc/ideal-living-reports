@@ -1,6 +1,5 @@
 import * as XLSX from 'xlsx';
-import path from 'path';
-import fs from 'fs';
+import { getExcelBuffer } from '@/lib/blob';
 
 export interface BrandData {
   brand: string;
@@ -88,18 +87,8 @@ export function safeRate(val: unknown): number | null {
   return n;
 }
 
-// Prefer data/rpd/latest.xlsx; fall back to legacy path
-function getDataFilePath(): string {
-  const rpdLatest = path.join(process.cwd(), 'data', 'rpd', 'latest.xlsx');
-  if (fs.existsSync(rpdLatest)) return rpdLatest;
-  const legacy = path.join(process.cwd(), 'data', 'latest.xlsx');
-  if (fs.existsSync(legacy)) return legacy;
-  return path.join(process.cwd(), 'data', 'Ideal_Living___Walmart_Sales_and_Advertising.xlsx');
-}
-
-export function parseDashboardData(): DashboardData {
-  const filePath = getDataFilePath();
-  const buffer = fs.readFileSync(filePath);
+export async function parseDashboardData(): Promise<DashboardData> {
+  const buffer = await getExcelBuffer('rpd');
   const wb = XLSX.read(buffer, { type: 'buffer' });
   const ws = wb.Sheets['WALMART_weekly_reporting_2026-B'];
 
@@ -193,9 +182,8 @@ export function parseDashboardData(): DashboardData {
   return { weeks, currentWeek, previousWeek };
 }
 
-export function parseSemData(): SemDashboardData {
-  const filePath = getDataFilePath();
-  const buffer = fs.readFileSync(filePath);
+export async function parseSemData(): Promise<SemDashboardData> {
+  const buffer = await getExcelBuffer('rpd');
   const wb = XLSX.read(buffer, { type: 'buffer' });
   const ws = wb.Sheets['SEM Campaigns Data 2026'];
 

@@ -110,12 +110,12 @@ function generateWinsAlerts(
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-export default function RpdHdPage() {
+export default async function RpdHdPage() {
   let data;
   let parseError: string | null = null;
 
   try {
-    data = parseRpdHdData();
+    data = await parseRpdHdData();
   } catch (err) {
     parseError = err instanceof Error ? err.message : 'Failed to load data';
   }

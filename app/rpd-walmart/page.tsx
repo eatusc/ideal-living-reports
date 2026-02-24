@@ -136,14 +136,13 @@ function generateWinsAlerts(
 
 // ─── Page ────────────────────────────────────────────────────────────────────
 
-export default function RpdWalmartPage() {
+export default async function RpdWalmartPage() {
   let data;
   let semData;
   let parseError: string | null = null;
 
   try {
-    data = parseDashboardData();
-    semData = parseSemData();
+    [data, semData] = await Promise.all([parseDashboardData(), parseSemData()]);
   } catch (err) {
     parseError = err instanceof Error ? err.message : 'Failed to load data';
   }

@@ -1,11 +1,6 @@
 import * as XLSX from 'xlsx';
-import path from 'path';
-import fs from 'fs';
 import { safeNum, safeRate, excelSerialToDateStr } from '@/lib/parseExcel';
-
-function getFilePath(): string {
-  return path.join(process.cwd(), 'data', 'elevate', 'latest.xlsx');
-}
+import { getExcelBuffer } from '@/lib/blob';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -223,13 +218,8 @@ function parseSem(wb: XLSX.WorkBook): { currentWeek: ElevateSemWeek; previousWee
 
 // ─── Main export ─────────────────────────────────────────────────────────────
 
-export function parseElevateData(): ElevateDashboardData {
-  const filePath = getFilePath();
-  if (!fs.existsSync(filePath)) {
-    throw new Error(`Elevate data file not found at ${filePath}`);
-  }
-
-  const buffer = fs.readFileSync(filePath);
+export async function parseElevateData(): Promise<ElevateDashboardData> {
+  const buffer = await getExcelBuffer('elevate');
   const wb = XLSX.read(buffer, { type: 'buffer' });
 
   const amazonWeeks = parseAmazon(wb);

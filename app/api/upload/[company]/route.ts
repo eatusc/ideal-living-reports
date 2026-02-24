@@ -8,6 +8,8 @@ const COMPANY_DIRS: Record<string, string> = {
   'rpd-hd': 'rpd-hd',
 };
 
+const XLSX_CONTENT_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+
 export async function POST(
   request: NextRequest,
   { params }: { params: { company: string } }
@@ -35,19 +37,30 @@ export async function POST(
   }
 
   const buffer = Buffer.from(await file.arrayBuffer());
+  const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
 
+  if (process.env.BLOB_READ_WRITE_TOKEN) {
+    // Vercel Blob — overwrite latest + save dated backup
+    const { put } = await import('@vercel/blob');
+    await put(`${dir}/latest.xlsx`, buffer, {
+      access: 'public',
+      addRandomSuffix: false,
+      contentType: XLSX_CONTENT_TYPE,
+    });
+    await put(`${dir}/${today}.xlsx`, buffer, {
+      access: 'public',
+      addRandomSuffix: false,
+      contentType: XLSX_CONTENT_TYPE,
+    });
+    return NextResponse.json({ ok: true, saved: `${dir}/latest.xlsx`, backup: `${dir}/${today}.xlsx`, storage: 'blob' });
+  }
+
+  // Local dev — write to disk
   const dataDir = path.join(process.cwd(), 'data', dir);
   if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
 
-  // Save as latest.xlsx (overwrite)
-  const latestPath = path.join(dataDir, 'latest.xlsx');
-  fs.writeFileSync(latestPath, buffer);
+  fs.writeFileSync(path.join(dataDir, 'latest.xlsx'), buffer);
+  fs.writeFileSync(path.join(dataDir, `${today}.xlsx`), buffer);
 
-  // Save dated backup
-  const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
-  const backupName = `${today}.xlsx`;
-  const backupPath = path.join(dataDir, backupName);
-  fs.writeFileSync(backupPath, buffer);
-
-  return NextResponse.json({ ok: true, saved: 'latest.xlsx', backup: backupName });
+  return NextResponse.json({ ok: true, saved: 'latest.xlsx', backup: `${today}.xlsx`, storage: 'local' });
 }
