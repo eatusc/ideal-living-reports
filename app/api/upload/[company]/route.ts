@@ -48,13 +48,13 @@ export async function POST(
   if (process.env.BLOB_READ_WRITE_TOKEN) {
     try {
       const { url } = await put(blobLatest, buffer, {
-        access: 'public',
+        access: 'private',
         addRandomSuffix: false,
         contentType: XLSX_CONTENT_TYPE,
       });
 
       await put(blobBackup, buffer, {
-        access: 'public',
+        access: 'private',
         addRandomSuffix: false,
         contentType: XLSX_CONTENT_TYPE,
       });
