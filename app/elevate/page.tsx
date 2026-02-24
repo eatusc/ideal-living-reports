@@ -37,6 +37,38 @@ function acosColor(acos: number | null): string {
   return 'text-red-400';
 }
 
+// ─── Wins & Alerts ───────────────────────────────────────────────────────────
+
+interface ElevateAlert { platform: string; message: string; }
+
+function generateElevateWinsAlerts(
+  platforms: Array<{
+    name: string;
+    currSales: number; prevSales: number;
+    currAcos: number | null; currRoas: number | null;
+    currAdSpend: number; currAdSales: number;
+  }>
+): { wins: ElevateAlert[]; alerts: ElevateAlert[] } {
+  const wins: ElevateAlert[] = [];
+  const alerts: ElevateAlert[] = [];
+
+  for (const p of platforms) {
+    const salesWow = wowPct(p.currSales, p.prevSales);
+    if (salesWow !== null && salesWow > 0.2)
+      wins.push({ platform: p.name, message: `Sales up ${(salesWow * 100).toFixed(0)}% WoW (${fmtDollar(p.prevSales)} → ${fmtDollar(p.currSales)})` });
+    if (p.currAcos !== null && p.currAcos > 0 && p.currAcos < 0.25)
+      wins.push({ platform: p.name, message: `Efficient ACoS of ${(p.currAcos * 100).toFixed(1)}% — ROAS ${fmtRoas(p.currRoas)}` });
+    if (p.currAcos !== null && p.currAcos > 0.7)
+      alerts.push({ platform: p.name, message: `ACoS at ${(p.currAcos * 100).toFixed(0)}% — review bids` });
+    if (salesWow !== null && salesWow < -0.3)
+      alerts.push({ platform: p.name, message: `Sales down ${Math.abs(salesWow * 100).toFixed(0)}% WoW (${fmtDollar(p.prevSales)} → ${fmtDollar(p.currSales)})` });
+    if (p.currAdSpend > 0 && p.currAdSales === 0)
+      alerts.push({ platform: p.name, message: `${fmtDollar(p.currAdSpend)} ad spend with $0 ad sales — review campaigns` });
+  }
+
+  return { wins, alerts };
+}
+
 // ─── Sub-components ──────────────────────────────────────────────────────────
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
@@ -238,6 +270,12 @@ export default function ElevatePage() {
   const walmRoasWow = wowArrow(wowPct(walmCurr.roas ?? 0, walmPrev.roas ?? 0));
   const walmOrganicWow = wowArrow(wowPct(walmCurr.organicSales, walmPrev.organicSales));
 
+  const { wins, alerts } = generateElevateWinsAlerts([
+    { name: 'Amazon', currSales: amzCurr.sales, prevSales: amzPrev.sales, currAcos: amzCurr.acos, currRoas: amzCurr.roas, currAdSpend: amzCurr.adSpend, currAdSales: amzCurr.adSales },
+    { name: 'Walmart', currSales: walmCurr.sales, prevSales: walmPrev.sales, currAcos: walmCurr.acos, currRoas: walmCurr.roas, currAdSpend: walmCurr.adSpend, currAdSales: walmCurr.adSales },
+    { name: 'SEM', currSales: semCurr.adSales, prevSales: semPrev.adSales, currAcos: semCurr.acos, currRoas: semCurr.roas, currAdSpend: semCurr.adSpend, currAdSales: semCurr.adSales },
+  ]);
+
   return (
     <main className="min-h-screen px-4 sm:px-6 py-10">
       <div className="max-w-[1100px] mx-auto">
@@ -361,6 +399,41 @@ export default function ElevatePage() {
             </div>
           );
         })()}
+
+        {/* ── WINS & ALERTS ──────────────────────────────────── */}
+        <SectionTitle>🔍 Wins &amp; Alerts</SectionTitle>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="bg-dash-card border border-white/[0.08] border-l-[3px] border-l-green-400 rounded-lg p-5">
+            <div className="text-[11px] font-bold uppercase tracking-[0.8px] text-green-400 mb-4">🟢 Wins This Week</div>
+            {wins.length === 0 ? (
+              <p className="text-[13px] text-gray-500">No wins detected this week.</p>
+            ) : (
+              <ul className="space-y-3">
+                {wins.map((w, i) => (
+                  <li key={i} className="flex gap-2.5 text-[13px] leading-relaxed">
+                    <div className="mt-1.5 w-1.5 h-1.5 rounded-full bg-green-400 flex-shrink-0" />
+                    <div><strong className="text-white">{w.platform}</strong>{' — '}<span className="text-[#C8D5E8]">{w.message}</span></div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+          <div className="bg-dash-card border border-white/[0.08] border-l-[3px] border-l-red-500 rounded-lg p-5">
+            <div className="text-[11px] font-bold uppercase tracking-[0.8px] text-red-400 mb-4">🔴 Watch / Action Required</div>
+            {alerts.length === 0 ? (
+              <p className="text-[13px] text-gray-500">No alerts detected this week.</p>
+            ) : (
+              <ul className="space-y-3">
+                {alerts.map((a, i) => (
+                  <li key={i} className="flex gap-2.5 text-[13px] leading-relaxed">
+                    <div className="mt-1.5 w-1.5 h-1.5 rounded-full bg-red-400 flex-shrink-0" />
+                    <div><strong className="text-white">{a.platform}</strong>{' — '}<span className="text-[#C8D5E8]">{a.message}</span></div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
 
         {/* ── NOTES ──────────────────────────────────────────── */}
         <NotesSection company="elevate" />
