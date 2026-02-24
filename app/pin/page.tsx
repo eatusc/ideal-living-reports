@@ -7,7 +7,7 @@ import { Suspense } from 'react';
 function PinForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const next = searchParams.get('next') || '/rpd-walmart';
+  const next = searchParams.get('next') || '/';
 
   const [digits, setDigits] = useState(['', '', '', '']);
   const [error, setError] = useState('');

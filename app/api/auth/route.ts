@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Incorrect PIN' }, { status: 401 });
   }
 
-  const redirectTo = next && next.startsWith('/') ? next : '/rpd-walmart';
+  const redirectTo = next && next.startsWith('/') ? next : '/';
   const response = NextResponse.json({ ok: true, redirect: redirectTo });
 
   response.cookies.set('pin_auth', '1', {

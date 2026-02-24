@@ -5,9 +5,11 @@ const PROTECTED_PREFIXES = ['/rpd-walmart', '/elevate', '/rpd-hd'];
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  const isProtected = PROTECTED_PREFIXES.some(
-    (prefix) => pathname === prefix || pathname.startsWith(prefix + '/')
-  );
+  const isProtected =
+    pathname === '/' ||
+    PROTECTED_PREFIXES.some(
+      (prefix) => pathname === prefix || pathname.startsWith(prefix + '/')
+    );
 
   if (!isProtected) return NextResponse.next();
 
@@ -20,5 +22,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/rpd-walmart/:path*', '/elevate/:path*', '/rpd-hd/:path*'],
+  matcher: ['/', '/rpd-walmart/:path*', '/elevate/:path*', '/rpd-hd/:path*'],
 };
