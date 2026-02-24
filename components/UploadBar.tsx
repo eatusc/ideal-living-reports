@@ -35,7 +35,15 @@ export default function UploadBar({ company }: UploadBarProps) {
         method: 'POST',
         body: formData,
       });
-      const data = await res.json();
+
+      let data: Record<string, string> = {};
+      try {
+        data = await res.json();
+      } catch {
+        setStatus('error');
+        setMessage(`Server error (${res.status}) — check Vercel logs`);
+        return;
+      }
 
       if (res.ok) {
         const today = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });

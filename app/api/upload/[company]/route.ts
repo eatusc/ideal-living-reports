@@ -73,6 +73,14 @@ export async function POST(
     });
   }
 
+  // In production without a Blob token, refuse clearly instead of crashing
+  if (process.env.NODE_ENV === 'production') {
+    return NextResponse.json(
+      { error: 'Blob storage not configured — add BLOB_READ_WRITE_TOKEN in Vercel environment variables.' },
+      { status: 503 }
+    );
+  }
+
   // Local dev — write to disk
   const dataDir = path.join(process.cwd(), 'data', dir);
   if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
