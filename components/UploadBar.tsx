@@ -1,0 +1,106 @@
+'use client';
+
+import { useState, useRef } from 'react';
+import { useRouter } from 'next/navigation';
+
+interface UploadBarProps {
+  company: 'rpd-walmart' | 'elevate' | 'rpd-hd';
+}
+
+export default function UploadBar({ company }: UploadBarProps) {
+  const router = useRouter();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [status, setStatus] = useState<'idle' | 'uploading' | 'success' | 'error'>('idle');
+  const [message, setMessage] = useState('');
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0] ?? null;
+    setSelectedFile(file);
+    setStatus('idle');
+    setMessage('');
+  }
+
+  async function handleUpload() {
+    if (!selectedFile) return;
+
+    setStatus('uploading');
+    setMessage('');
+
+    const formData = new FormData();
+    formData.append('file', selectedFile);
+
+    try {
+      const res = await fetch(`/api/upload/${company}`, {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res.json();
+
+      if (res.ok) {
+        const today = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        setStatus('success');
+        setMessage(`Saved as ${data.saved} · backup: ${data.backup} · ${today}`);
+        setSelectedFile(null);
+        if (inputRef.current) inputRef.current.value = '';
+      } else {
+        setStatus('error');
+        setMessage(data.error ?? 'Upload failed');
+      }
+    } catch {
+      setStatus('error');
+      setMessage('Network error — please try again');
+    }
+  }
+
+  function handleReload() {
+    router.refresh();
+  }
+
+  return (
+    <div className="mb-6 bg-dash-card border border-white/[0.08] rounded-lg px-4 py-3 flex flex-wrap items-center gap-3">
+      <div className="text-[10px] font-bold uppercase tracking-[1px] text-gray-500 mr-1">
+        Data
+      </div>
+
+      <label className="flex items-center gap-2 cursor-pointer">
+        <input
+          ref={inputRef}
+          type="file"
+          accept=".xlsx,.xls"
+          onChange={handleFileChange}
+          className="hidden"
+        />
+        <span className="px-3 py-1.5 text-[12px] font-medium rounded bg-dash-card2 border border-white/[0.1] text-gray-300 hover:border-white/20 hover:text-white transition-colors">
+          {selectedFile ? selectedFile.name : 'Choose Excel file…'}
+        </span>
+      </label>
+
+      {selectedFile && (
+        <button
+          onClick={handleUpload}
+          disabled={status === 'uploading'}
+          className="px-3 py-1.5 text-[12px] font-semibold rounded bg-[#FFC220] text-[#0A0F1C] hover:bg-[#FFD050] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        >
+          {status === 'uploading' ? 'Uploading…' : 'Upload'}
+        </button>
+      )}
+
+      {status === 'success' && (
+        <>
+          <span className="text-[11px] text-green-400 font-mono">✓ {message}</span>
+          <button
+            onClick={handleReload}
+            className="px-3 py-1.5 text-[12px] font-semibold rounded bg-[#0071CE]/20 border border-[#0071CE]/40 text-blue-300 hover:bg-[#0071CE]/30 transition-colors"
+          >
+            Reload Report
+          </button>
+        </>
+      )}
+
+      {status === 'error' && (
+        <span className="text-[11px] text-red-400 font-mono">✗ {message}</span>
+      )}
+    </div>
+  );
+}

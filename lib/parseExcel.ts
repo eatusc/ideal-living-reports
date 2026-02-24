@@ -17,6 +17,8 @@ export interface BrandData {
 
 export interface WeekData {
   label: string;         // e.g. "2026 - Week 1", "Current Week"
+  startDate?: string;    // e.g. "Feb 17" — first date seen in the week's data rows
+  endDate?: string;      // e.g. "Feb 23" — last date seen in the week's data rows
   sales: number;
   units: number;
   orderedItems: number;
@@ -58,7 +60,7 @@ export interface SemDashboardData {
   previousWeek: SemWeekData;
 }
 
-function safeNum(val: unknown): number {
+export function safeNum(val: unknown): number {
   if (typeof val === 'number') {
     if (isNaN(val) || !isFinite(val)) return 0;
     return val;
@@ -72,18 +74,26 @@ function safeNum(val: unknown): number {
   return 0;
 }
 
+// Converts an Excel date serial number to a short date string e.g. "Feb 17"
+export function excelSerialToDateStr(serial: number): string {
+  const date = new Date((serial - 25569) * 86400000);
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+}
+
 // Returns null for error values (#DIV/0!, #REF!) — meaning "not applicable"
-function safeRate(val: unknown): number | null {
+export function safeRate(val: unknown): number | null {
   if (typeof val === 'string' && val.includes('#')) return null;
   if (val === null || val === undefined) return null;
   const n = safeNum(val);
   return n;
 }
 
-// Prefer latest.xlsx; fall back to the legacy filename
+// Prefer data/rpd/latest.xlsx; fall back to legacy path
 function getDataFilePath(): string {
-  const latest = path.join(process.cwd(), 'data', 'latest.xlsx');
-  if (fs.existsSync(latest)) return latest;
+  const rpdLatest = path.join(process.cwd(), 'data', 'rpd', 'latest.xlsx');
+  if (fs.existsSync(rpdLatest)) return rpdLatest;
+  const legacy = path.join(process.cwd(), 'data', 'latest.xlsx');
+  if (fs.existsSync(legacy)) return legacy;
   return path.join(process.cwd(), 'data', 'Ideal_Living___Walmart_Sales_and_Advertising.xlsx');
 }
 
@@ -118,6 +128,8 @@ export function parseDashboardData(): DashboardData {
 
   const weeks: WeekData[] = [];
   let pendingBrands: BrandData[] = [];
+  let pendingFirstSerial: number | undefined = undefined;
+  let pendingLastSerial: number | undefined = undefined;
 
   // Data starts at row index 11 (0-based), which is after the header at row 10
   for (let i = 11; i < rows.length; i++) {
@@ -131,6 +143,8 @@ export function parseDashboardData(): DashboardData {
     if (typeof col1 === 'string' && col1.toLowerCase().includes('week')) {
       weeks.push({
         label: col1.trim(),
+        startDate: pendingFirstSerial !== undefined ? excelSerialToDateStr(pendingFirstSerial) : undefined,
+        endDate: pendingLastSerial !== undefined ? excelSerialToDateStr(pendingLastSerial) : undefined,
         sales: safeNum(row[3]),
         units: safeNum(row[5]),
         orderedItems: safeNum(row[6]),
@@ -142,11 +156,18 @@ export function parseDashboardData(): DashboardData {
         brands: [...pendingBrands],
       });
       pendingBrands = [];
+      pendingFirstSerial = undefined;
+      pendingLastSerial = undefined;
       continue;
     }
 
     // Detect brand row: col2 is a non-empty string
     if (col2 && typeof col2 === 'string' && col2.trim() !== '') {
+      // Track first and last date serials seen for this week group
+      if (typeof col1 === 'number' && col1 > 40000) {
+        if (pendingFirstSerial === undefined) pendingFirstSerial = col1;
+        pendingLastSerial = col1;
+      }
       const brand = col2.trim();
       pendingBrands.push({
         brand,
