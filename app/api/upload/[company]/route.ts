@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { put } from '@vercel/blob';
 import fs from 'fs';
 import path from 'path';
 
@@ -38,39 +39,38 @@ export async function POST(
   }
 
   const buffer = Buffer.from(await file.arrayBuffer());
-  const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  const today = new Date().toISOString().slice(0, 10);
 
-  // Blob paths use the company slug so it's clear in the Vercel dashboard:
-  //   rpd-walmart/latest.xlsx
-  //   rpd-walmart/2026-02-24.xlsx
-  //   elevate/latest.xlsx
-  //   rpd-hd/latest.xlsx
+  // Blob keys: rpd-walmart/latest.xlsx, elevate/latest.xlsx, rpd-hd/latest.xlsx
   const blobLatest = `${company}/latest.xlsx`;
   const blobBackup = `${company}/${today}.xlsx`;
 
   if (process.env.BLOB_READ_WRITE_TOKEN) {
-    const { put } = await import('@vercel/blob');
+    try {
+      const { url } = await put(blobLatest, buffer, {
+        access: 'public',
+        addRandomSuffix: false,
+        contentType: XLSX_CONTENT_TYPE,
+      });
 
-    const { url } = await put(blobLatest, buffer, {
-      access: 'public',
-      addRandomSuffix: false,
-      contentType: XLSX_CONTENT_TYPE,
-    });
+      await put(blobBackup, buffer, {
+        access: 'public',
+        addRandomSuffix: false,
+        contentType: XLSX_CONTENT_TYPE,
+      });
 
-    await put(blobBackup, buffer, {
-      access: 'public',
-      addRandomSuffix: false,
-      contentType: XLSX_CONTENT_TYPE,
-    });
-
-    return NextResponse.json({
-      ok: true,
-      report: company,
-      saved: blobLatest,
-      backup: blobBackup,
-      url,
-      storage: 'blob',
-    });
+      return NextResponse.json({
+        ok: true,
+        report: company,
+        saved: blobLatest,
+        backup: blobBackup,
+        url,
+        storage: 'blob',
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      return NextResponse.json({ error: `Blob upload failed: ${message}` }, { status: 500 });
+    }
   }
 
   // In production without a Blob token, refuse clearly instead of crashing

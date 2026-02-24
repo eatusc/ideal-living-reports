@@ -1,7 +1,8 @@
+import { list } from '@vercel/blob';
 import fs from 'fs';
 import path from 'path';
 
-// Maps company slug → local data folder name (mirrors upload route)
+// Maps company slug → local data folder name
 const COMPANY_DIRS: Record<string, string> = {
   'rpd-walmart': 'rpd',
   'elevate':     'elevate',
@@ -16,22 +17,25 @@ const COMPANY_DIRS: Record<string, string> = {
  *   elevate/latest.xlsx
  *   rpd-hd/latest.xlsx
  *
- * Local fallback:
+ * Local fallback (no BLOB_READ_WRITE_TOKEN):
  *   data/rpd/latest.xlsx
  *   data/elevate/latest.xlsx
  *   data/rpd-hd/latest.xlsx
  */
 export async function getExcelBuffer(company: string): Promise<Buffer> {
   if (process.env.BLOB_READ_WRITE_TOKEN) {
-    const { list } = await import('@vercel/blob');
-    // Exact prefix match: 'rpd-walmart/latest.xlsx'
-    const { blobs } = await list({ prefix: `${company}/latest.xlsx` });
-    if (blobs.length === 0) {
-      throw new Error(`No file uploaded yet for "${company}". Upload an Excel file to get started.`);
+    try {
+      const { blobs } = await list({ prefix: `${company}/latest.xlsx` });
+      if (blobs.length === 0) {
+        throw new Error(`No file uploaded yet for "${company}". Upload an Excel file to get started.`);
+      }
+      const res = await fetch(blobs[0].url);
+      if (!res.ok) throw new Error(`Failed to fetch "${company}" data from storage (${res.status})`);
+      return Buffer.from(await res.arrayBuffer());
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      throw new Error(`Blob read failed for "${company}": ${message}`);
     }
-    const res = await fetch(blobs[0].url);
-    if (!res.ok) throw new Error(`Failed to fetch "${company}" data from storage (${res.status})`);
-    return Buffer.from(await res.arrayBuffer());
   }
 
   // Local dev fallback — read from disk
