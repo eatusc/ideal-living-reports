@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic';
 
-import { parseRpdHdData, type RpdHdCampaignGroupData } from '@/lib/parseRpdHd';
+import { parseRpdHdData, type RpdHdCampaignGroupData, type RetailerData, type RetailerWeekData } from '@/lib/parseRpdHd';
 import { wowPct, fmtDollar, fmtPct, fmtRoas } from '@/lib/parseExcel';
 import UploadBar from '@/components/UploadBar';
 import NotesSection from '@/components/NotesSection';
@@ -53,9 +53,10 @@ interface ScoreCardProps {
   prevLabel: string;
   wow: { symbol: string; label: string; cls: string };
   topColor?: string;
+  source?: string;
 }
 
-function ScoreCard({ label, value, prevLabel, wow, topColor }: ScoreCardProps) {
+function ScoreCard({ label, value, prevLabel, wow, topColor, source }: ScoreCardProps) {
   return (
     <div
       className="relative bg-dash-card border border-white/[0.08] rounded-lg p-4 overflow-hidden"
@@ -67,6 +68,7 @@ function ScoreCard({ label, value, prevLabel, wow, topColor }: ScoreCardProps) {
         <span>{wow.symbol}</span><span>{wow.label} WoW</span>
       </div>
       <div className="font-mono text-[10px] mt-0.5 text-gray-500">{prevLabel}</div>
+      {source && <div className="text-[9px] uppercase tracking-wide text-gray-600 mt-1">{source}</div>}
     </div>
   );
 }
@@ -108,6 +110,174 @@ function generateWinsAlerts(
   return { wins, alerts };
 }
 
+// ─── Retailer Direct Sales Section ───────────────────────────────────────────
+
+function RetailerSalesSection({
+  homeDepotUS,
+  homeDepotCanada,
+  lowes,
+}: {
+  homeDepotUS: RetailerData;
+  homeDepotCanada: RetailerData;
+  lowes: RetailerData;
+}) {
+  const retailers = [
+    { key: 'hd-us',     label: 'Home Depot US',     color: '#F96302', data: homeDepotUS },
+    { key: 'hd-ca',     label: 'Home Depot Canada',  color: '#E8341C', data: homeDepotCanada },
+    { key: 'lowes',     label: "Lowe's",              color: '#004990', data: lowes },
+  ];
+
+  // Collect all week labels in order (from the retailer with the most weeks)
+  const allLabels = Array.from(
+    new Set(
+      retailers
+        .flatMap((r) => r.data.weeks.map((w) => w.label))
+    )
+  );
+
+  return (
+    <>
+      <SectionTitle>🏪 Retailer Direct Sales (Rithum / DSCO)</SectionTitle>
+
+      {/* Scorecard row */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+        {retailers.map(({ key, label, color, data }) => {
+          const curr = data.currentWeek;
+          const prev = data.previousWeek;
+          const salesWow = wowArrow(wowPct(curr.sales, prev.sales));
+          const unitsWow = wowArrow(wowPct(curr.units, prev.units));
+          return (
+            <div
+              key={key}
+              className="bg-dash-card border border-white/[0.08] rounded-lg p-4 overflow-hidden"
+              style={{ borderTop: `2px solid ${color}` }}
+            >
+              <div className="text-[11px] font-bold uppercase tracking-[0.8px] mb-3" style={{ color }}>
+                {label}
+              </div>
+              <div className="flex gap-4">
+                <div className="flex-1">
+                  <div className="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Sales</div>
+                  <div className="font-mono text-[20px] font-bold text-white leading-none">{fmtDollar(curr.sales)}</div>
+                  <div className={`font-mono text-[11px] mt-1 flex items-center gap-1 ${salesWow.cls}`}>
+                    <span>{salesWow.symbol}</span><span>{salesWow.label} WoW</span>
+                  </div>
+                  <div className="font-mono text-[10px] text-gray-500 mt-0.5">Prev: {fmtDollar(prev.sales)}</div>
+                </div>
+                <div className="flex-1">
+                  <div className="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Units</div>
+                  <div className="font-mono text-[20px] font-bold text-white leading-none">{formatNumber(curr.units)}</div>
+                  <div className={`font-mono text-[11px] mt-1 flex items-center gap-1 ${unitsWow.cls}`}>
+                    <span>{unitsWow.symbol}</span><span>{unitsWow.label} WoW</span>
+                  </div>
+                  <div className="font-mono text-[10px] text-gray-500 mt-0.5">Prev: {formatNumber(prev.units)}</div>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Combined weekly trend table */}
+      <div className="bg-dash-card border border-white/[0.08] rounded-lg overflow-hidden mb-6">
+        <div className="px-4 py-2.5 border-b border-white/[0.08] text-[11px] font-semibold text-gray-400 uppercase tracking-wide">
+          Weekly Sales Trend — All Retailers
+        </div>
+        <div className="table-scroll">
+          <table className="w-full border-collapse text-[12px]">
+            <thead>
+              <tr className="bg-dash-card2 border-b border-white/[0.08]">
+                <th className="text-left px-3.5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.8px] text-gray-400 whitespace-nowrap">Week</th>
+                <th className="text-right px-3.5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.8px] text-[#F96302] whitespace-nowrap">HD US</th>
+                <th className="text-right px-3.5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.8px] text-[#E8341C] whitespace-nowrap">HD Canada</th>
+                <th className="text-right px-3.5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.8px] text-[#004990] whitespace-nowrap">Lowe's</th>
+                <th className="text-right px-3.5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.8px] text-gray-300 whitespace-nowrap">Combined</th>
+              </tr>
+            </thead>
+            <tbody>
+              {allLabels.map((label) => {
+                const hdUS = homeDepotUS.weeks.find((w) => w.label === label);
+                const hdCA = homeDepotCanada.weeks.find((w) => w.label === label);
+                const lws  = lowes.weeks.find((w) => w.label === label);
+                const combined = (hdUS?.sales ?? 0) + (hdCA?.sales ?? 0) + (lws?.sales ?? 0);
+                const isCurrent = label === 'Current Week';
+                const isPrev = label === 'Previous Week';
+                const rowCls = isCurrent
+                  ? 'bg-[#F96302]/10 border-b border-white/[0.08]'
+                  : isPrev
+                  ? 'bg-white/[0.02] border-b border-white/[0.08]'
+                  : 'border-b border-white/[0.05] hover:bg-white/[0.02] transition-colors';
+                const cellCls = isCurrent ? 'text-orange-200 font-semibold' : 'text-[#E8EDF5]';
+                return (
+                  <tr key={label} className={rowCls}>
+                    <td className={`px-3.5 py-2.5 font-sans font-medium text-[13px] whitespace-nowrap ${isCurrent ? 'text-orange-400 font-semibold' : 'text-white'}`}>
+                      {isCurrent ? (
+                        <>
+                          ▶ {label}
+                          {(hdUS?.startDate || hdCA?.startDate) && (
+                            <span className="block text-[10px] text-gray-500 font-mono font-normal">
+                              {(hdUS?.startDate ?? hdCA?.startDate)}{(hdUS?.endDate ?? hdCA?.endDate) && (hdUS?.endDate ?? hdCA?.endDate) !== (hdUS?.startDate ?? hdCA?.startDate) ? ` – ${hdUS?.endDate ?? hdCA?.endDate}` : ''}
+                            </span>
+                          )}
+                        </>
+                      ) : isPrev ? (
+                        <>
+                          {label}
+                          {(hdUS?.startDate || hdCA?.startDate) && (
+                            <span className="block text-[10px] text-gray-500 font-mono font-normal">
+                              {(hdUS?.startDate ?? hdCA?.startDate)}{(hdUS?.endDate ?? hdCA?.endDate) && (hdUS?.endDate ?? hdCA?.endDate) !== (hdUS?.startDate ?? hdCA?.startDate) ? ` – ${hdUS?.endDate ?? hdCA?.endDate}` : ''}
+                            </span>
+                          )}
+                        </>
+                      ) : label}
+                    </td>
+                    <td className={`px-3.5 py-2.5 text-right font-mono ${cellCls}`}>{hdUS ? fmtDollar(hdUS.sales) : '—'}</td>
+                    <td className={`px-3.5 py-2.5 text-right font-mono ${cellCls}`}>{hdCA ? fmtDollar(hdCA.sales) : '—'}</td>
+                    <td className={`px-3.5 py-2.5 text-right font-mono ${cellCls}`}>{lws  ? fmtDollar(lws.sales)  : '—'}</td>
+                    <td className={`px-3.5 py-2.5 text-right font-mono font-semibold ${cellCls}`}>{fmtDollar(combined)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Brand breakdown per retailer — current week */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {retailers.map(({ key, label, color, data }) => (
+          <div key={key} className="bg-dash-card border border-white/[0.08] rounded-lg overflow-hidden">
+            <div className="px-4 py-2.5 border-b border-white/[0.08] text-[11px] font-semibold uppercase tracking-wide" style={{ color }}>
+              {label} — Current Week
+            </div>
+            <table className="w-full border-collapse text-[12px]">
+              <thead>
+                <tr className="bg-dash-card2 border-b border-white/[0.08]">
+                  <th className="text-left px-3.5 py-2 text-[10px] font-semibold uppercase tracking-wide text-gray-400">Brand</th>
+                  <th className="text-right px-3.5 py-2 text-[10px] font-semibold uppercase tracking-wide text-gray-400">Sales</th>
+                  <th className="text-right px-3.5 py-2 text-[10px] font-semibold uppercase tracking-wide text-gray-400">Units</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.currentWeek.brands.filter((b) => b.sales > 0 || b.units > 0).map((b) => (
+                  <tr key={b.brand} className="border-b border-white/[0.05] last:border-0 hover:bg-white/[0.02] transition-colors">
+                    <td className="px-3.5 py-2 text-white font-medium text-[13px]">{b.brand}</td>
+                    <td className="px-3.5 py-2 text-right font-mono text-[#E8EDF5]">{fmtDollar(b.sales)}</td>
+                    <td className="px-3.5 py-2 text-right font-mono text-[#E8EDF5]">{b.units}</td>
+                  </tr>
+                ))}
+                {data.currentWeek.brands.filter((b) => b.sales > 0 || b.units > 0).length === 0 && (
+                  <tr><td colSpan={3} className="px-3.5 py-3 text-gray-500 text-[12px]">No sales this week</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default async function RpdHdPage() {
@@ -138,13 +308,22 @@ export default async function RpdHdPage() {
 
   const { weeks, currentWeek: curr, previousWeek: prev } = data;
 
-  const salesWow = wowArrow(wowPct(curr.sales, prev.sales));
-  const unitsWow = wowArrow(wowPct(curr.units, prev.units));
+  // DSCO combined totals (HD US + HD Canada only — Lowes is separate)
+  const dscoCurrSales = data.homeDepotUS.currentWeek.sales + data.homeDepotCanada.currentWeek.sales;
+  const dscoPrevSales = data.homeDepotUS.previousWeek.sales + data.homeDepotCanada.previousWeek.sales;
+  const dscoCurrUnits = data.homeDepotUS.currentWeek.units + data.homeDepotCanada.currentWeek.units;
+  const dscoPrevUnits = data.homeDepotUS.previousWeek.units + data.homeDepotCanada.previousWeek.units;
+  // Organic = DSCO total sales − Orange Access ad sales
+  const dscoCurrOrganic = Math.max(0, dscoCurrSales - curr.adSales);
+  const dscoPrevOrganic = Math.max(0, dscoPrevSales - prev.adSales);
+
+  const salesWow = wowArrow(wowPct(dscoCurrSales, dscoPrevSales));
+  const unitsWow = wowArrow(wowPct(dscoCurrUnits, dscoPrevUnits));
   const adSpendWow = wowArrow(wowPct(curr.adSpend, prev.adSpend), true);
   const adSalesWow = wowArrow(wowPct(curr.adSales, prev.adSales));
   const acosWow = acosWowArrow(curr.acos, prev.acos);
   const roasWow = wowArrow(wowPct(curr.roas ?? 0, prev.roas ?? 0));
-  const organicWow = wowArrow(wowPct(curr.organicSales, prev.organicSales));
+  const organicWow = wowArrow(wowPct(dscoCurrOrganic, dscoPrevOrganic));
 
   // Campaign group breakdown
   const currMap = new Map(curr.groups.map((g) => [g.group, g]));
@@ -157,6 +336,19 @@ export default async function RpdHdPage() {
 
   const { wins, alerts } = generateWinsAlerts(curr.groups, prev.groups);
   const displayWeeks = weeks.slice(-8);
+
+  // DSCO sales lookup by startDate — used to fill Total Sales in the OA trend table
+  // (OA "total sales" column is $0; real totals come from Home Depot - 2026 + Home Depot Canada - 2026)
+  const dscoByDate = new Map<string, { sales: number; units: number }>();
+  for (const retailer of [data.homeDepotUS, data.homeDepotCanada]) {
+    for (const w of retailer.weeks) {
+      if (!w.startDate) continue;
+      const existing = dscoByDate.get(w.startDate) ?? { sales: 0, units: 0 };
+      existing.sales += w.sales;
+      existing.units += w.units;
+      dscoByDate.set(w.startDate, existing);
+    }
+  }
 
   return (
     <main className="min-h-screen px-4 sm:px-6 py-10">
@@ -191,17 +383,17 @@ export default async function RpdHdPage() {
         {/* ── SCORECARD ──────────────────────────────────────── */}
         <SectionTitle>📊 Weekly Scorecard — Current vs. Previous Week</SectionTitle>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 mb-2">
-          <ScoreCard label="Total Sales" value={fmtDollar(curr.sales)} prevLabel={`Prev: ${fmtDollar(prev.sales)}`} wow={salesWow} topColor={curr.sales >= prev.sales ? '#22C55E' : '#EF4444'} />
-          <ScoreCard label="Units Sold" value={formatNumber(curr.units)} prevLabel={`Prev: ${formatNumber(prev.units)}`} wow={unitsWow} topColor={curr.units >= prev.units ? '#22C55E' : '#EF4444'} />
-          <ScoreCard label="Ad Spend" value={fmtDollar(curr.adSpend)} prevLabel={`Prev: ${fmtDollar(prev.adSpend)}`} wow={adSpendWow} topColor={curr.adSpend <= prev.adSpend ? '#22C55E' : '#EF4444'} />
-          <ScoreCard label="Ad Sales" value={fmtDollar(curr.adSales)} prevLabel={`Prev: ${fmtDollar(prev.adSales)}`} wow={adSalesWow} topColor={curr.adSales >= prev.adSales ? '#22C55E' : '#EF4444'} />
-          <ScoreCard label="ACoS" value={fmtPct(curr.acos)} prevLabel={`Prev: ${fmtPct(prev.acos)}`} wow={acosWow} topColor={curr.acos === null ? '#374151' : curr.acos < 0.35 ? '#22C55E' : curr.acos < 0.55 ? '#F59E0B' : '#EF4444'} />
-          <ScoreCard label="ROAS" value={fmtRoas(curr.roas)} prevLabel={`Prev: ${fmtRoas(prev.roas)}`} wow={roasWow} topColor={(curr.roas ?? 0) >= (prev.roas ?? 0) ? '#22C55E' : '#EF4444'} />
-          <ScoreCard label="Organic Sales" value={fmtDollar(curr.organicSales)} prevLabel={`Prev: ${fmtDollar(prev.organicSales)}`} wow={organicWow} topColor={curr.organicSales >= prev.organicSales ? '#22C55E' : '#EF4444'} />
+          <ScoreCard label="Total Sales" value={fmtDollar(dscoCurrSales)} prevLabel={`Prev: ${fmtDollar(dscoPrevSales)}`} wow={salesWow} topColor={dscoCurrSales >= dscoPrevSales ? '#22C55E' : '#EF4444'} source="DSCO · HD US + HD Canada" />
+          <ScoreCard label="Units Sold" value={formatNumber(dscoCurrUnits)} prevLabel={`Prev: ${formatNumber(dscoPrevUnits)}`} wow={unitsWow} topColor={dscoCurrUnits >= dscoPrevUnits ? '#22C55E' : '#EF4444'} source="DSCO · HD US + HD Canada" />
+          <ScoreCard label="Ad Spend" value={fmtDollar(curr.adSpend)} prevLabel={`Prev: ${fmtDollar(prev.adSpend)}`} wow={adSpendWow} topColor={curr.adSpend <= prev.adSpend ? '#22C55E' : '#EF4444'} source="Orange Access" />
+          <ScoreCard label="Ad Sales" value={fmtDollar(curr.adSales)} prevLabel={`Prev: ${fmtDollar(prev.adSales)}`} wow={adSalesWow} topColor={curr.adSales >= prev.adSales ? '#22C55E' : '#EF4444'} source="Orange Access" />
+          <ScoreCard label="ACoS" value={fmtPct(curr.acos)} prevLabel={`Prev: ${fmtPct(prev.acos)}`} wow={acosWow} topColor={curr.acos === null ? '#374151' : curr.acos < 0.35 ? '#22C55E' : curr.acos < 0.55 ? '#F59E0B' : '#EF4444'} source="Orange Access" />
+          <ScoreCard label="ROAS" value={fmtRoas(curr.roas)} prevLabel={`Prev: ${fmtRoas(prev.roas)}`} wow={roasWow} topColor={(curr.roas ?? 0) >= (prev.roas ?? 0) ? '#22C55E' : '#EF4444'} source="Orange Access" />
+          <ScoreCard label="Organic Sales" value={fmtDollar(dscoCurrOrganic)} prevLabel={`Prev: ${fmtDollar(dscoPrevOrganic)}`} wow={organicWow} topColor={dscoCurrOrganic >= dscoPrevOrganic ? '#22C55E' : '#EF4444'} source="DSCO − OA Ad Sales" />
         </div>
 
         {/* ── CAMPAIGN GROUP BREAKDOWN ───────────────────────── */}
-        <SectionTitle>🏷️ Campaign Group Breakdown — Current vs. Previous Week</SectionTitle>
+        <SectionTitle>🏷️ Campaign Group Breakdown — Current vs. Previous Week <span className="text-gray-600 normal-case font-normal tracking-normal text-[9px] ml-1">Source: Orange Access</span></SectionTitle>
         <div className="bg-dash-card border border-white/[0.08] rounded-lg overflow-hidden">
           <div className="table-scroll">
             <table className="w-full border-collapse text-[12px]">
@@ -246,15 +438,41 @@ export default async function RpdHdPage() {
         </div>
 
         {/* ── WEEKLY TREND TABLE ─────────────────────────────── */}
-        <SectionTitle>📈 Weekly Trend (Orange Access Combined)</SectionTitle>
+        <SectionTitle>📈 Weekly Trend — Orange Access + Home Depot - 2026 + Home Depot Canada - 2026</SectionTitle>
         <div className="bg-dash-card border border-white/[0.08] rounded-lg overflow-hidden">
           <div className="table-scroll">
             <table className="w-full border-collapse text-[12px]">
               <thead>
                 <tr className="bg-dash-card2 border-b border-white/[0.08]">
-                  {['Week', 'Total Sales', 'Units', 'Ad Spend', 'Ad Sales', 'ACoS', 'ROAS', 'Organic Sales'].map((h) => (
-                    <th key={h} className={`${h === 'Week' ? 'text-left' : 'text-right'} px-3.5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.8px] text-gray-400 whitespace-nowrap`}>{h}</th>
-                  ))}
+                  <th className="text-left px-3.5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.8px] text-gray-400 whitespace-nowrap">Week</th>
+                  <th className="text-right px-3.5 py-2.5 whitespace-nowrap">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.8px] text-gray-400">Total Sales</div>
+                    <div className="text-[9px] text-gray-600 normal-case tracking-normal font-normal">HD US + HD Canada (DSCO)</div>
+                  </th>
+                  <th className="text-right px-3.5 py-2.5 whitespace-nowrap">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.8px] text-gray-400">Units</div>
+                    <div className="text-[9px] text-gray-600 normal-case tracking-normal font-normal">HD US + HD Canada (DSCO)</div>
+                  </th>
+                  <th className="text-right px-3.5 py-2.5 whitespace-nowrap">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.8px] text-gray-400">Ad Spend</div>
+                    <div className="text-[9px] text-gray-600 normal-case tracking-normal font-normal">Orange Access</div>
+                  </th>
+                  <th className="text-right px-3.5 py-2.5 whitespace-nowrap">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.8px] text-gray-400">Ad Sales</div>
+                    <div className="text-[9px] text-gray-600 normal-case tracking-normal font-normal">Orange Access</div>
+                  </th>
+                  <th className="text-right px-3.5 py-2.5 whitespace-nowrap">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.8px] text-gray-400">ACoS</div>
+                    <div className="text-[9px] text-gray-600 normal-case tracking-normal font-normal">Orange Access</div>
+                  </th>
+                  <th className="text-right px-3.5 py-2.5 whitespace-nowrap">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.8px] text-gray-400">ROAS</div>
+                    <div className="text-[9px] text-gray-600 normal-case tracking-normal font-normal">Orange Access</div>
+                  </th>
+                  <th className="text-right px-3.5 py-2.5 whitespace-nowrap">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.8px] text-gray-400">Organic Sales</div>
+                    <div className="text-[9px] text-gray-600 normal-case tracking-normal font-normal">DSCO − OA Ad Sales</div>
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -262,6 +480,10 @@ export default async function RpdHdPage() {
                   const isCurrent = week.label === curr.label;
                   const rowCls = isCurrent ? 'bg-[#F96302]/10 border-b border-white/[0.08]' : 'border-b border-white/[0.05] hover:bg-white/[0.02] transition-colors';
                   const cellCls = isCurrent ? 'text-orange-200 font-semibold' : 'text-[#E8EDF5]';
+                  const dsco = week.startDate ? dscoByDate.get(week.startDate) : undefined;
+                  const rowSales = dsco?.sales ?? null;
+                  const rowUnits = dsco?.units ?? null;
+                  const rowOrganic = dsco != null ? Math.max(0, dsco.sales - week.adSales) : null;
                   return (
                     <tr key={week.label} className={rowCls}>
                       <td className={`px-3.5 py-2.5 font-sans font-medium text-[13px] whitespace-nowrap ${isCurrent ? 'text-orange-400 font-semibold' : 'text-white'}`}>
@@ -272,13 +494,13 @@ export default async function RpdHdPage() {
                           </>
                         ) : week.label}
                       </td>
-                      <td className={`px-3.5 py-2.5 text-right font-mono ${cellCls}`}>{fmtDollar(week.sales)}</td>
-                      <td className={`px-3.5 py-2.5 text-right font-mono ${cellCls}`}>{formatNumber(week.units)}</td>
+                      <td className={`px-3.5 py-2.5 text-right font-mono ${cellCls}`}>{rowSales !== null ? fmtDollar(rowSales) : '—'}</td>
+                      <td className={`px-3.5 py-2.5 text-right font-mono ${cellCls}`}>{rowUnits !== null ? formatNumber(rowUnits) : '—'}</td>
                       <td className={`px-3.5 py-2.5 text-right font-mono ${cellCls}`}>{fmtDollar(week.adSpend)}</td>
                       <td className={`px-3.5 py-2.5 text-right font-mono ${cellCls}`}>{fmtDollar(week.adSales)}</td>
                       <td className={`px-3.5 py-2.5 text-right font-mono font-semibold ${acosColor(week.acos)}`}>{fmtPct(week.acos)}</td>
                       <td className={`px-3.5 py-2.5 text-right font-mono ${cellCls}`}>{fmtRoas(week.roas)}</td>
-                      <td className={`px-3.5 py-2.5 text-right font-mono ${cellCls}`}>{fmtDollar(week.organicSales)}</td>
+                      <td className={`px-3.5 py-2.5 text-right font-mono ${cellCls}`}>{rowOrganic !== null ? fmtDollar(rowOrganic) : '—'}</td>
                     </tr>
                   );
                 })}
@@ -286,6 +508,13 @@ export default async function RpdHdPage() {
             </table>
           </div>
         </div>
+
+        {/* ── RETAILER DIRECT SALES ─────────────────────────── */}
+        <RetailerSalesSection
+          homeDepotUS={data.homeDepotUS}
+          homeDepotCanada={data.homeDepotCanada}
+          lowes={data.lowes}
+        />
 
         {/* ── WINS & ALERTS ──────────────────────────────────── */}
         <SectionTitle>🔍 Wins &amp; Alerts</SectionTitle>
