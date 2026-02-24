@@ -50,12 +50,14 @@ export async function POST(
       const { url } = await put(blobLatest, buffer, {
         access: 'private',
         addRandomSuffix: false,
+        allowOverwrite: true,
         contentType: XLSX_CONTENT_TYPE,
       });
 
       await put(blobBackup, buffer, {
         access: 'private',
         addRandomSuffix: false,
+        allowOverwrite: true,
         contentType: XLSX_CONTENT_TYPE,
       });
 
