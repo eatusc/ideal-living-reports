@@ -11,7 +11,7 @@ export default function UploadBar({ company }: UploadBarProps) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [status, setStatus] = useState<'idle' | 'uploading' | 'success' | 'error'>('idle');
+  const [status, setStatus] = useState<'idle' | 'uploading' | 'success' | 'warning' | 'error'>('idle');
   const [message, setMessage] = useState('');
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -36,7 +36,8 @@ export default function UploadBar({ company }: UploadBarProps) {
         body: formData,
       });
 
-      let data: Record<string, string> = {};
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let data: Record<string, any> = {};
       try {
         data = await res.json();
       } catch {
@@ -47,8 +48,16 @@ export default function UploadBar({ company }: UploadBarProps) {
 
       if (res.ok) {
         const today = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-        setStatus('success');
-        setMessage(`Saved as ${data.saved} · backup: ${data.backup} · ${today}`);
+        const summary = data.summary ?? '';
+        const hasWarning = data.sheetsMissing?.length > 0 || data.weeksFound === 0;
+
+        if (hasWarning) {
+          setStatus('warning');
+          setMessage(`File saved but: ${summary}`);
+        } else {
+          setStatus('success');
+          setMessage(`${summary} · ${today}`);
+        }
         setSelectedFile(null);
         if (inputRef.current) inputRef.current.value = '';
       } else {
@@ -64,6 +73,8 @@ export default function UploadBar({ company }: UploadBarProps) {
   function handleReload() {
     router.refresh();
   }
+
+  const showReload = status === 'success' || status === 'warning';
 
   return (
     <div className="mb-6 bg-dash-card border border-white/[0.08] rounded-lg px-4 py-3 flex flex-wrap items-center gap-3">
@@ -95,15 +106,20 @@ export default function UploadBar({ company }: UploadBarProps) {
       )}
 
       {status === 'success' && (
-        <>
-          <span className="text-[11px] text-green-400 font-mono">✓ {message}</span>
-          <button
-            onClick={handleReload}
-            className="px-3 py-1.5 text-[12px] font-semibold rounded bg-[#0071CE]/20 border border-[#0071CE]/40 text-blue-300 hover:bg-[#0071CE]/30 transition-colors"
-          >
-            Reload Report
-          </button>
-        </>
+        <span className="text-[11px] text-green-400 font-mono">✓ {message}</span>
+      )}
+
+      {status === 'warning' && (
+        <span className="text-[11px] text-amber-400 font-mono">⚠ {message}</span>
+      )}
+
+      {showReload && (
+        <button
+          onClick={handleReload}
+          className="px-3 py-1.5 text-[12px] font-semibold rounded bg-[#0071CE]/20 border border-[#0071CE]/40 text-blue-300 hover:bg-[#0071CE]/30 transition-colors"
+        >
+          Reload Report
+        </button>
       )}
 
       {status === 'error' && (

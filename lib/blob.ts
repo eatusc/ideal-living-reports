@@ -30,8 +30,10 @@ export async function getExcelBuffer(company: string): Promise<Buffer> {
         throw new Error(`No file uploaded yet for "${company}". Upload an Excel file to get started.`);
       }
       // Fetch with Bearer token — required for private store server-side reads
+      // cache: 'no-store' prevents Next.js from caching stale blob data after uploads
       const res = await fetch(blobs[0].url, {
         headers: { Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}` },
+        cache: 'no-store',
       });
       if (!res.ok) throw new Error(`Failed to fetch "${company}" data from storage (${res.status})`);
       return Buffer.from(await res.arrayBuffer());

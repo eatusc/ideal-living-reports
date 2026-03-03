@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { put } from '@vercel/blob';
+import * as XLSX from 'xlsx';
 import fs from 'fs';
 import path from 'path';
 
@@ -11,6 +12,60 @@ const COMPANY_DIRS: Record<string, string> = {
 };
 
 const XLSX_CONTENT_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+
+// Sheets each report expects (for validation feedback)
+const EXPECTED_SHEETS: Record<string, string[]> = {
+  'rpd-walmart': ['WALMART_weekly_reporting_2026-B', 'SEM Campaigns Data 2026'],
+  'elevate':     ['2026 - Amazon Performance Repor', '2026 - Walmart Performance Repo', '2026 SEM Campaigns Data - per d'],
+  'rpd-hd':      ['ALL - 2026 - Orange Access'],
+};
+
+/** Quick-scan the Excel buffer for sheet validation and row/week counts */
+function analyzeExcel(buffer: Buffer, company: string): {
+  sheetsFound: string[];
+  sheetsMissing: string[];
+  totalDataRows: number;
+  weeksFound: number;
+  summary: string;
+} {
+  const wb = XLSX.read(buffer, { type: 'buffer' });
+  const expected = EXPECTED_SHEETS[company] ?? [];
+  const sheetsFound = expected.filter((s) => wb.SheetNames.includes(s));
+  const sheetsMissing = expected.filter((s) => !wb.SheetNames.includes(s));
+
+  let totalDataRows = 0;
+  let weeksFound = 0;
+
+  for (const sheetName of sheetsFound) {
+    const ws = wb.Sheets[sheetName];
+    if (!ws) continue;
+    const rows = XLSX.utils.sheet_to_json<unknown[]>(ws, { header: 1, defval: null, raw: true });
+    // Data starts at row 11 (0-indexed)
+    for (let i = 11; i < rows.length; i++) {
+      const row = rows[i] as unknown[];
+      if (!row || !Array.isArray(row)) continue;
+      // Check col[0] or col[1] for week labels
+      const col0 = row[0];
+      const col1 = row[1];
+      const isWeekRow =
+        (typeof col0 === 'string' && col0.toLowerCase().includes('week')) ||
+        (typeof col1 === 'string' && col1.toLowerCase().includes('week'));
+      if (isWeekRow) weeksFound++;
+      else totalDataRows++;
+    }
+  }
+
+  let summary: string;
+  if (sheetsMissing.length > 0) {
+    summary = `Warning: missing sheets: ${sheetsMissing.join(', ')}`;
+  } else if (weeksFound === 0) {
+    summary = `${sheetsFound.length} sheet(s) found but 0 weeks detected — check data format`;
+  } else {
+    summary = `${sheetsFound.length} sheet(s) · ${weeksFound} weeks · ${totalDataRows} data rows processed`;
+  }
+
+  return { sheetsFound, sheetsMissing, totalDataRows, weeksFound, summary };
+}
 
 export async function POST(
   request: NextRequest,
@@ -41,6 +96,9 @@ export async function POST(
   const buffer = Buffer.from(await file.arrayBuffer());
   const today = new Date().toISOString().slice(0, 10);
 
+  // Analyze the Excel file for validation feedback
+  const analysis = analyzeExcel(buffer, company);
+
   // Blob keys: rpd-walmart/latest.xlsx, elevate/latest.xlsx, rpd-hd/latest.xlsx
   const blobLatest = `${company}/latest.xlsx`;
   const blobBackup = `${company}/${today}.xlsx`;
@@ -68,6 +126,7 @@ export async function POST(
         backup: blobBackup,
         url,
         storage: 'blob',
+        ...analysis,
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
@@ -96,5 +155,6 @@ export async function POST(
     saved: `data/${dir}/latest.xlsx`,
     backup: `data/${dir}/${today}.xlsx`,
     storage: 'local',
+    ...analysis,
   });
 }
