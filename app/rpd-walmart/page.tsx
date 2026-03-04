@@ -12,6 +12,7 @@ import {
 } from '@/lib/parseExcel';
 import UploadBar from '@/components/UploadBar';
 import NotesSection from '@/components/NotesSection';
+import RpdWalmartTrendTable from '@/components/RpdWalmartTrendTable';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -121,7 +122,7 @@ function generateWinsAlerts(
       wins.push({ brand: curr.brand, message: `Efficient ACoS of ${(curr.acos * 100).toFixed(1)}% — ROAS ${fmtRoas(curr.roas)}` });
     }
     if (curr.acos !== null && curr.acos > 0.7) {
-      alerts.push({ brand: curr.brand, message: `ACoS at ${(curr.acos * 100).toFixed(0)}% — review bids in Intentwise` });
+      alerts.push({ brand: curr.brand, message: `ACoS at ${(curr.acos * 100).toFixed(0)}% — review bids` });
     }
     if (salesWow !== null && salesWow < -0.3) {
       alerts.push({ brand: curr.brand, message: `Sales down ${Math.abs(salesWow * 100).toFixed(0)}% WoW (${fmtDollar(prevSales)} → ${fmtDollar(curr.sales)})` });
@@ -236,55 +237,7 @@ export default async function RpdWalmartPage() {
 
         {/* ── 8-WEEK TREND TABLE ─────────────────────────────── */}
         <SectionTitle>📈 Weekly Sales Trend (All Brands Combined)</SectionTitle>
-        <div className="bg-dash-card border border-white/[0.08] rounded-lg overflow-hidden">
-          <div className="table-scroll">
-            <table className="w-full border-collapse text-[12px]">
-              <thead>
-                <tr className="bg-dash-card2 border-b border-white/[0.08]">
-                  <th className="text-left px-3.5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.8px] text-gray-400 whitespace-nowrap">Week</th>
-                  <th className="text-right px-3.5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.8px] text-gray-400 whitespace-nowrap">Total Sales</th>
-                  <th className="text-right px-3.5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.8px] text-gray-400 whitespace-nowrap">Units</th>
-                  <th className="text-right px-3.5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.8px] text-gray-400 whitespace-nowrap">Ad Spend</th>
-                  <th className="text-right px-3.5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.8px] text-gray-400 whitespace-nowrap">Ad Sales</th>
-                  <th className="text-right px-3.5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.8px] text-gray-400 whitespace-nowrap">ACoS</th>
-                  <th className="text-right px-3.5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.8px] text-gray-400 whitespace-nowrap">ROAS</th>
-                  <th className="text-right px-3.5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.8px] text-gray-400 whitespace-nowrap">Organic Sales</th>
-                </tr>
-              </thead>
-              <tbody>
-                {weeks.map((week) => {
-                  const isCurrent = week.label === 'Current Week';
-                  const isPrev = week.label === 'Previous Week';
-                  const rowCls = isCurrent
-                    ? 'bg-[#0071CE]/10 border-b border-white/[0.08]'
-                    : isPrev
-                    ? 'bg-white/[0.02] border-b border-white/[0.08]'
-                    : 'border-b border-white/[0.05] hover:bg-white/[0.02] transition-colors';
-
-                  return (
-                    <tr key={week.label} className={rowCls}>
-                      <td className={`px-3.5 py-2.5 font-sans font-medium text-[13px] whitespace-nowrap ${isCurrent ? 'text-blue-400 font-semibold' : 'text-white'}`}>
-                        {isCurrent ? (
-                          <>
-                            ▶ Current Week
-                            {week.startDate && <span className="block text-[10px] text-gray-500 font-mono font-normal">{week.startDate}{week.endDate && week.endDate !== week.startDate ? ` – ${week.endDate}` : ''}</span>}
-                          </>
-                        ) : isPrev ? 'Previous Week' : week.label}
-                      </td>
-                      <td className={`px-3.5 py-2.5 text-right font-mono ${isCurrent ? 'text-blue-200 font-semibold' : 'text-[#E8EDF5]'}`}>{fmtDollar(week.sales)}</td>
-                      <td className={`px-3.5 py-2.5 text-right font-mono ${isCurrent ? 'text-blue-200 font-semibold' : 'text-[#E8EDF5]'}`}>{formatNumber(week.units)}</td>
-                      <td className={`px-3.5 py-2.5 text-right font-mono ${isCurrent ? 'text-blue-200 font-semibold' : 'text-[#E8EDF5]'}`}>{fmtDollar(week.adSpend)}</td>
-                      <td className={`px-3.5 py-2.5 text-right font-mono ${isCurrent ? 'text-blue-200 font-semibold' : 'text-[#E8EDF5]'}`}>{fmtDollar(week.adSales)}</td>
-                      <td className={`px-3.5 py-2.5 text-right font-mono font-semibold ${acosColorInline(week.acos)}`}>{fmtPct(week.acos)}</td>
-                      <td className={`px-3.5 py-2.5 text-right font-mono ${isCurrent ? 'text-blue-200 font-semibold' : 'text-[#E8EDF5]'}`}>{fmtRoas(week.roas)}</td>
-                      <td className={`px-3.5 py-2.5 text-right font-mono ${isCurrent ? 'text-blue-200 font-semibold' : 'text-[#E8EDF5]'}`}>{fmtDollar(week.organicSales)}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <RpdWalmartTrendTable weeks={weeks} />
 
         {/* ── BRAND BREAKDOWN TABLE ──────────────────────────── */}
         <SectionTitle>🏷️ Brand Breakdown — Current Week vs. Previous Week</SectionTitle>
@@ -372,6 +325,7 @@ export default async function RpdWalmartPage() {
                       <th className="text-right px-3.5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.8px] text-gray-400 whitespace-nowrap">Prev Spend</th>
                       <th className="text-right px-3.5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.8px] text-gray-400 whitespace-nowrap">WoW Δ%</th>
                       <th className="text-right px-3.5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.8px] text-gray-400 whitespace-nowrap">Ad Sales</th>
+                      <th className="text-right px-3.5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.8px] text-gray-400 whitespace-nowrap">Prev Ad Sales</th>
                       <th className="text-right px-3.5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.8px] text-gray-400 whitespace-nowrap">ACoS</th>
                       <th className="text-right px-3.5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.8px] text-gray-400 whitespace-nowrap">ROAS</th>
                       <th className="text-right px-3.5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.8px] text-gray-400 whitespace-nowrap">Impressions</th>
@@ -390,6 +344,7 @@ export default async function RpdWalmartPage() {
                             {spendWowVal === null ? '—' : `${spendWow.symbol} ${Math.abs(spendWowVal * 100).toFixed(0)}%`}
                           </td>
                           <td className="px-3.5 py-2.5 text-right font-mono text-[#E8EDF5]">{c.adSales > 0 ? fmtDollar(c.adSales) : '—'}</td>
+                          <td className="px-3.5 py-2.5 text-right font-mono text-gray-400">{p && p.adSales > 0 ? fmtDollar(p.adSales) : '—'}</td>
                           <td className={`px-3.5 py-2.5 text-right font-mono font-semibold ${acosColorInline(c.acos)}`}>{c.acos !== null && c.acos > 0 ? fmtPct(c.acos) : '—'}</td>
                           <td className="px-3.5 py-2.5 text-right font-mono text-[#E8EDF5]">{fmtRoas(c.roas)}</td>
                           <td className="px-3.5 py-2.5 text-right font-mono text-gray-400">{c.impressions > 0 ? c.impressions.toLocaleString('en-US') : '—'}</td>

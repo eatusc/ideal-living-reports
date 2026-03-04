@@ -1,9 +1,10 @@
 export const dynamic = 'force-dynamic';
 
-import { parseElevateData, type ElevateWeekData, type ElevateWalmartWeekData } from '@/lib/parseElevate';
+import { parseElevateData } from '@/lib/parseElevate';
 import { wowPct, fmtDollar, fmtPct, fmtRoas } from '@/lib/parseExcel';
 import UploadBar from '@/components/UploadBar';
 import NotesSection from '@/components/NotesSection';
+import { ElevateAmazonTrendTable, ElevateWalmartTrendTable } from '@/components/ElevateTrendTables';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -111,106 +112,6 @@ function ScoreCard({ label, value, prevLabel, wow, topColor }: ScoreCardProps) {
         <span>{wow.symbol}</span><span>{wow.label} WoW</span>
       </div>
       <div className="font-mono text-[10px] mt-0.5 text-gray-500">{prevLabel}</div>
-    </div>
-  );
-}
-
-// ─── Amazon trend table ───────────────────────────────────────────────────────
-
-function AmazonTrendTable({ weeks }: { weeks: ElevateWeekData[] }) {
-  const display = weeks.slice(-8);
-  const current = display[display.length - 1];
-
-  return (
-    <div className="bg-dash-card border border-white/[0.08] rounded-lg overflow-hidden">
-      <div className="table-scroll">
-        <table className="w-full border-collapse text-[12px]">
-          <thead>
-            <tr className="bg-dash-card2 border-b border-white/[0.08]">
-              {['Week', 'Sales', 'Units', 'Orders', 'Sessions', 'Conv. Rate', 'Ad Spend', 'Ad Sales', 'ACoS', 'ROAS'].map((h) => (
-                <th key={h} className={`${h === 'Week' ? 'text-left' : 'text-right'} px-3.5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.8px] text-gray-400 whitespace-nowrap`}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {display.map((week) => {
-              const isCurrent = week.label === current.label;
-              const rowCls = isCurrent ? 'bg-[#FF9900]/10 border-b border-white/[0.08]' : 'border-b border-white/[0.05] hover:bg-white/[0.02] transition-colors';
-              const cellCls = isCurrent ? 'text-orange-200 font-semibold' : 'text-[#E8EDF5]';
-              return (
-                <tr key={week.label} className={rowCls}>
-                  <td className={`px-3.5 py-2.5 font-sans font-medium text-[13px] whitespace-nowrap ${isCurrent ? 'text-orange-400 font-semibold' : 'text-white'}`}>
-                    {isCurrent ? (
-                      <>
-                        ▶ {week.label}
-                        {week.startDate && <span className="block text-[10px] text-gray-500 font-mono font-normal">{week.startDate}{week.endDate && week.endDate !== week.startDate ? ` – ${week.endDate}` : ''}</span>}
-                      </>
-                    ) : week.label}
-                  </td>
-                  <td className={`px-3.5 py-2.5 text-right font-mono ${cellCls}`}>{fmtDollar(week.sales)}</td>
-                  <td className={`px-3.5 py-2.5 text-right font-mono ${cellCls}`}>{formatNumber(week.units)}</td>
-                  <td className={`px-3.5 py-2.5 text-right font-mono ${cellCls}`}>{formatNumber(week.orders)}</td>
-                  <td className={`px-3.5 py-2.5 text-right font-mono ${cellCls}`}>{formatNumber(week.sessions)}</td>
-                  <td className={`px-3.5 py-2.5 text-right font-mono ${cellCls}`}>{week.conversionRate !== null ? fmtPct(week.conversionRate) : '—'}</td>
-                  <td className={`px-3.5 py-2.5 text-right font-mono ${cellCls}`}>{fmtDollar(week.adSpend)}</td>
-                  <td className={`px-3.5 py-2.5 text-right font-mono ${cellCls}`}>{fmtDollar(week.adSales)}</td>
-                  <td className={`px-3.5 py-2.5 text-right font-mono font-semibold ${acosColor(week.acos)}`}>{fmtPct(week.acos)}</td>
-                  <td className={`px-3.5 py-2.5 text-right font-mono ${cellCls}`}>{fmtRoas(week.roas)}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
-// ─── Walmart trend table ──────────────────────────────────────────────────────
-
-function WalmartTrendTable({ weeks }: { weeks: ElevateWalmartWeekData[] }) {
-  const display = weeks.slice(-8);
-  const current = display[display.length - 1];
-
-  return (
-    <div className="bg-dash-card border border-white/[0.08] rounded-lg overflow-hidden">
-      <div className="table-scroll">
-        <table className="w-full border-collapse text-[12px]">
-          <thead>
-            <tr className="bg-dash-card2 border-b border-white/[0.08]">
-              {['Week', 'Sales', 'Units', 'Ad Spend', 'Ad Sales', 'ACoS', 'ROAS', 'Organic'].map((h) => (
-                <th key={h} className={`${h === 'Week' ? 'text-left' : 'text-right'} px-3.5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.8px] text-gray-400 whitespace-nowrap`}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {display.map((week) => {
-              const isCurrent = week.label === current.label;
-              const rowCls = isCurrent ? 'bg-[#0071CE]/10 border-b border-white/[0.08]' : 'border-b border-white/[0.05] hover:bg-white/[0.02] transition-colors';
-              const cellCls = isCurrent ? 'text-blue-200 font-semibold' : 'text-[#E8EDF5]';
-              return (
-                <tr key={week.label} className={rowCls}>
-                  <td className={`px-3.5 py-2.5 font-sans font-medium text-[13px] whitespace-nowrap ${isCurrent ? 'text-blue-400 font-semibold' : 'text-white'}`}>
-                    {isCurrent ? (
-                      <>
-                        ▶ {week.label}
-                        {week.startDate && <span className="block text-[10px] text-gray-500 font-mono font-normal">{week.startDate}{week.endDate && week.endDate !== week.startDate ? ` – ${week.endDate}` : ''}</span>}
-                      </>
-                    ) : week.label}
-                  </td>
-                  <td className={`px-3.5 py-2.5 text-right font-mono ${cellCls}`}>{fmtDollar(week.sales)}</td>
-                  <td className={`px-3.5 py-2.5 text-right font-mono ${cellCls}`}>{formatNumber(week.units)}</td>
-                  <td className={`px-3.5 py-2.5 text-right font-mono ${cellCls}`}>{fmtDollar(week.adSpend)}</td>
-                  <td className={`px-3.5 py-2.5 text-right font-mono ${cellCls}`}>{fmtDollar(week.adSales)}</td>
-                  <td className={`px-3.5 py-2.5 text-right font-mono font-semibold ${acosColor(week.acos)}`}>{fmtPct(week.acos)}</td>
-                  <td className={`px-3.5 py-2.5 text-right font-mono ${cellCls}`}>{fmtRoas(week.roas)}</td>
-                  <td className={`px-3.5 py-2.5 text-right font-mono ${cellCls}`}>{fmtDollar(week.organicSales)}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
     </div>
   );
 }
@@ -325,7 +226,7 @@ export default async function ElevatePage() {
 
         {/* ── AMAZON TREND TABLE ─────────────────────────────── */}
         <SectionTitle>📈 Amazon Weekly Trend</SectionTitle>
-        <AmazonTrendTable weeks={amazon.weeks} />
+        <ElevateAmazonTrendTable weeks={amazon.weeks} />
 
         {/* ══════════════════════════════════════════════════════ */}
         <PlatformDivider title="Walmart" color="#0071CE" />
@@ -344,7 +245,7 @@ export default async function ElevatePage() {
 
         {/* ── WALMART TREND TABLE ────────────────────────────── */}
         <SectionTitle>📈 Walmart Weekly Trend</SectionTitle>
-        <WalmartTrendTable weeks={walmart.weeks} />
+        <ElevateWalmartTrendTable weeks={walmart.weeks} />
 
         {/* ══════════════════════════════════════════════════════ */}
         <PlatformDivider title="SEM Campaigns" color="#A855F7" />
@@ -371,7 +272,7 @@ export default async function ElevatePage() {
                 <table className="w-full border-collapse text-[12px]">
                   <thead>
                     <tr className="bg-dash-card2 border-b border-white/[0.08]">
-                      {['Campaign', 'Ad Spend', 'Prev Spend', 'WoW Δ%', 'Ad Sales', 'ACoS', 'ROAS', 'Impressions'].map((h) => (
+                      {['Campaign', 'Ad Spend', 'Prev Spend', 'WoW Δ%', 'Ad Sales', 'Prev Ad Sales', 'ACoS', 'ROAS', 'Impressions'].map((h) => (
                         <th key={h} className={`${h === 'Campaign' ? 'text-left' : 'text-right'} px-3.5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.8px] text-gray-400 whitespace-nowrap`}>{h}</th>
                       ))}
                     </tr>
@@ -387,6 +288,7 @@ export default async function ElevatePage() {
                           <td className="px-3.5 py-2.5 text-right font-mono text-gray-400">{p ? fmtDollar(p.adSpend) : '—'}</td>
                           <td className={`px-3.5 py-2.5 text-right font-mono font-semibold ${spendWow.cls}`}>{spendWowVal === null ? '—' : `${spendWow.symbol} ${Math.abs(spendWowVal * 100).toFixed(0)}%`}</td>
                           <td className="px-3.5 py-2.5 text-right font-mono text-[#E8EDF5]">{c.adSales > 0 ? fmtDollar(c.adSales) : '—'}</td>
+                          <td className="px-3.5 py-2.5 text-right font-mono text-gray-400">{p && p.adSales > 0 ? fmtDollar(p.adSales) : '—'}</td>
                           <td className={`px-3.5 py-2.5 text-right font-mono font-semibold ${acosColor(c.acos)}`}>{c.acos !== null && c.acos > 0 ? fmtPct(c.acos) : '—'}</td>
                           <td className="px-3.5 py-2.5 text-right font-mono text-[#E8EDF5]">{fmtRoas(c.roas)}</td>
                           <td className="px-3.5 py-2.5 text-right font-mono text-gray-400">{c.impressions > 0 ? c.impressions.toLocaleString('en-US') : '—'}</td>

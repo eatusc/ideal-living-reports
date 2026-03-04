@@ -1,63 +1,11 @@
 import * as XLSX from 'xlsx';
 import { getExcelBuffer } from '@/lib/blob';
 
-export interface BrandData {
-  brand: string;
-  sales: number;
-  units: number;
-  orderedItems: number;
-  adSpend: number;
-  adUnitSales: number;
-  adSales: number;
-  acos: number | null;   // decimal, e.g. 0.44 = 44%; null = not applicable
-  roas: number | null;   // e.g. 2.27 = 2.27x; null = not applicable
-  organicSales: number;
-}
+// Re-export types and utilities from client-safe module
+export type { BrandData, WeekData, DashboardData, SemCampaignData, SemWeekData, SemDashboardData } from '@/lib/formatUtils';
+export { wowPct, fmtPct, fmtDollar, fmtRoas, acosClass } from '@/lib/formatUtils';
 
-export interface WeekData {
-  label: string;         // e.g. "2026 - Week 1", "Current Week"
-  startDate?: string;    // e.g. "Feb 17" — first date seen in the week's data rows
-  endDate?: string;      // e.g. "Feb 23" — last date seen in the week's data rows
-  sales: number;
-  units: number;
-  orderedItems: number;
-  adSpend: number;
-  adSales: number;
-  acos: number | null;
-  roas: number | null;
-  organicSales: number;
-  brands: BrandData[];
-}
-
-export interface DashboardData {
-  weeks: WeekData[];
-  currentWeek: WeekData;
-  previousWeek: WeekData;
-}
-
-export interface SemCampaignData {
-  campaign: string;
-  displayName: string;   // "Dielon - AquaTru - Highly Recommended" → "AquaTru - Highly Recommended"
-  adSpend: number;
-  adSales: number;
-  acos: number | null;
-  roas: number | null;
-  impressions: number;
-}
-
-export interface SemWeekData {
-  adSpend: number;
-  adSales: number;
-  acos: number | null;
-  roas: number | null;
-  impressions: number;
-  campaigns: SemCampaignData[];
-}
-
-export interface SemDashboardData {
-  currentWeek: SemWeekData;
-  previousWeek: SemWeekData;
-}
+import type { BrandData, WeekData, DashboardData, SemCampaignData, SemWeekData, SemDashboardData } from '@/lib/formatUtils';
 
 export function safeNum(val: unknown): number {
   if (typeof val === 'number') {
@@ -257,34 +205,3 @@ export async function parseSemData(): Promise<SemDashboardData> {
   };
 }
 
-// Utility: week-over-week % change (returns null if prev is 0)
-export function wowPct(current: number, prev: number): number | null {
-  if (prev === 0) return null;
-  return (current - prev) / Math.abs(prev);
-}
-
-// Utility: format a decimal ACoS as percentage string e.g. "44.0%"
-export function fmtPct(val: number | null, decimals = 1): string {
-  if (val === null) return '—';
-  return `${(val * 100).toFixed(decimals)}%`;
-}
-
-// Utility: format a dollar value e.g. "$18,720"
-export function fmtDollar(val: number, decimals = 0): string {
-  if (val < 0) return `-$${Math.abs(val).toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
-  return `$${val.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
-}
-
-// Utility: format ROAS as e.g. "2.27x"
-export function fmtRoas(val: number | null): string {
-  if (val === null || val === 0) return '—';
-  return `${val.toFixed(2)}x`;
-}
-
-// ACoS color class: green <35%, amber 35–55%, red >55%
-export function acosClass(acos: number | null): string {
-  if (acos === null) return 'text-gray-500';
-  if (acos < 0.35) return 'text-green-400';
-  if (acos <= 0.55) return 'text-amber-400';
-  return 'text-red-400';
-}

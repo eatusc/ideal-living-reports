@@ -2,36 +2,9 @@ import * as XLSX from 'xlsx';
 import { safeNum, safeRate, excelSerialToDateStr } from '@/lib/parseExcel';
 import { getExcelBuffer } from '@/lib/blob';
 
-// ─── Types ───────────────────────────────────────────────────────────────────
-
-export interface RpdHdCampaignGroupData {
-  group: string;
-  sales: number;
-  units: number;
-  orderedItems: number;
-  adSpend: number;
-  adSales: number;
-  adUnitSales: number;
-  impressions: number;
-  acos: number | null;
-  roas: number | null;
-  organicSales: number;
-}
-
-export interface RpdHdWeekData {
-  label: string;
-  startDate?: string;
-  endDate?: string;
-  sales: number;
-  units: number;
-  orderedItems: number;
-  adSpend: number;
-  adSales: number;
-  acos: number | null;
-  roas: number | null;
-  organicSales: number;
-  groups: RpdHdCampaignGroupData[];
-}
+// Re-export types from client-safe module
+export type { RpdHdCampaignGroupData, RpdHdWeekData } from '@/lib/formatUtils';
+import type { RpdHdCampaignGroupData, RpdHdWeekData } from '@/lib/formatUtils';
 
 // ─── Retailer direct sales types (HD US / HD Canada / Lowes) ─────────────────
 

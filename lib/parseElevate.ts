@@ -2,40 +2,9 @@ import * as XLSX from 'xlsx';
 import { safeNum, safeRate, excelSerialToDateStr } from '@/lib/parseExcel';
 import { getExcelBuffer } from '@/lib/blob';
 
-// ─── Types ───────────────────────────────────────────────────────────────────
-
-export interface ElevateWeekData {
-  label: string;
-  startDate?: string;
-  endDate?: string;
-  sales: number;
-  units: number;
-  orders: number;
-  sessions: number;
-  conversionRate: number | null;
-  adSpend: number;
-  adSales: number;
-  adUnitSales: number;
-  impressions: number;
-  acos: number | null;
-  roas: number | null;
-}
-
-export interface ElevateWalmartWeekData {
-  label: string;
-  startDate?: string;
-  endDate?: string;
-  sales: number;
-  units: number;
-  orderedItems: number;
-  adSpend: number;
-  adSales: number;
-  adUnitSales: number;
-  impressions: number;
-  acos: number | null;
-  roas: number | null;
-  organicSales: number;
-}
+// Re-export types from client-safe module
+export type { ElevateWeekData, ElevateWalmartWeekData } from '@/lib/formatUtils';
+import type { ElevateWeekData, ElevateWalmartWeekData } from '@/lib/formatUtils';
 
 export interface ElevateSemCampaign {
   campaign: string;
