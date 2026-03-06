@@ -154,13 +154,17 @@ export async function POST(request: NextRequest) {
     const { error: insertError } = await supabase.from(queueTable).insert({
       prompt: event.text || '(file upload)',
       status: 'queued',
+      input_artifacts: uploadedFiles.map((f) => ({
+        name: f.name,
+        path: f.path,
+        url: f.publicUrl,
+      })),
       source_meta: {
         source: 'slack',
         type: 'file_upload',
         user_id: event.user,
         channel_id: event.channel,
         ts: event.ts,
-        files: uploadedFiles,
       },
     });
 
