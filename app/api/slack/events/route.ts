@@ -104,7 +104,15 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  const payload: SlackEventPayload = JSON.parse(body);
+  let payload: SlackEventPayload;
+  try {
+    payload = JSON.parse(body);
+  } catch {
+    console.error('[slack/events] Failed to parse JSON body:', body.slice(0, 500));
+    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+  }
+
+  console.log('[slack/events] Received:', payload.type, payload.event?.type, payload.event?.subtype, 'files:', payload.event?.files?.length ?? 0);
 
   // --- URL verification challenge (Slack sends this once when you set the endpoint) ---
   if (payload.type === 'url_verification') {
@@ -117,14 +125,17 @@ export async function POST(request: NextRequest) {
 
     // Ignore bot messages and message edits/deletes
     if (event.subtype && event.subtype !== 'file_share') {
+      console.log('[slack/events] Ignoring subtype:', event.subtype);
       return NextResponse.json({ ok: true });
     }
 
     const files = event.files;
     if (!files || files.length === 0) {
-      // No files — just a text message, ignore or queue as text-only task
+      console.log('[slack/events] No files in event, skipping');
       return NextResponse.json({ ok: true });
     }
+
+    console.log('[slack/events] Processing', files.length, 'file(s):', files.map(f => f.name).join(', '));
 
     // Process files
     const botToken = process.env.AUTOMATION_SLACK_BOT_TOKEN;
@@ -146,7 +157,9 @@ export async function POST(request: NextRequest) {
       if (!downloadUrl) continue;
 
       try {
+        console.log('[slack/events] Downloading:', file.name, 'from', downloadUrl.slice(0, 80));
         const { buffer, contentType } = await downloadSlackFile(downloadUrl, botToken);
+        console.log('[slack/events] Downloaded:', file.name, buffer.length, 'bytes');
 
         // Store as: slack/<user>/<timestamp>-<filename>
         const storagePath = `slack/${event.user}/${event.ts}-${file.name}`;
