@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
+import https from 'https';
 import { createClient } from '@supabase/supabase-js';
 
 interface SlackFile {
@@ -49,15 +50,41 @@ async function downloadSlackFile(
   url: string,
   botToken: string
 ): Promise<{ buffer: Buffer; contentType: string }> {
-  const res = await fetch(url, {
-    headers: { Authorization: `Bearer ${botToken}` },
+  return new Promise((resolve, reject) => {
+    const parsedUrl = new URL(url);
+    const options = {
+      hostname: parsedUrl.hostname,
+      path: parsedUrl.pathname + parsedUrl.search,
+      method: 'GET',
+      headers: { Authorization: `Bearer ${botToken}` },
+      // Slack's file CDN can have cert chain issues on some runtimes
+      rejectUnauthorized: false,
+    };
+
+    const req = https.request(options, (res) => {
+      if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+        // Follow redirect
+        downloadSlackFile(res.headers.location, botToken).then(resolve).catch(reject);
+        return;
+      }
+      if (!res.statusCode || res.statusCode >= 400) {
+        reject(new Error(`Failed to download from Slack: ${res.statusCode}`));
+        return;
+      }
+      const chunks: Buffer[] = [];
+      res.on('data', (chunk: Buffer) => chunks.push(chunk));
+      res.on('end', () => {
+        resolve({
+          buffer: Buffer.concat(chunks),
+          contentType: res.headers['content-type'] ?? 'application/octet-stream',
+        });
+      });
+      res.on('error', reject);
+    });
+
+    req.on('error', reject);
+    req.end();
   });
-  if (!res.ok) {
-    throw new Error(`Failed to download from Slack: ${res.status}`);
-  }
-  const contentType = res.headers.get('content-type') ?? 'application/octet-stream';
-  const buffer = Buffer.from(await res.arrayBuffer());
-  return { buffer, contentType };
 }
 
 export async function POST(request: NextRequest) {
