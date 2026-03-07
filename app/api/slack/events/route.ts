@@ -123,81 +123,89 @@ export async function POST(request: NextRequest) {
   if (payload.type === 'event_callback' && payload.event) {
     const event = payload.event;
 
-    // Ignore bot messages and message edits/deletes
+    // Ignore bot messages and message edits/deletes (allow file_share and plain messages)
     if (event.subtype && event.subtype !== 'file_share') {
       console.log('[slack/events] Ignoring subtype:', event.subtype);
       return NextResponse.json({ ok: true });
     }
 
     const files = event.files;
-    if (!files || files.length === 0) {
-      console.log('[slack/events] No files in event, skipping');
+    const hasFiles = files && files.length > 0;
+    const hasText = !!event.text?.trim();
+
+    if (!hasFiles && !hasText) {
+      console.log('[slack/events] No files or text in event, skipping');
       return NextResponse.json({ ok: true });
     }
 
-    console.log('[slack/events] Processing', files.length, 'file(s):', files.map(f => f.name).join(', '));
+    console.log('[slack/events]', hasFiles ? `Processing ${files!.length} file(s): ${files!.map(f => f.name).join(', ')}` : 'Text-only message');
 
-    // Process files
     const botToken = process.env.AUTOMATION_SLACK_BOT_TOKEN;
     const supabaseUrl = process.env.AUTOMATION_SUPABASE_URL;
     const supabaseKey = process.env.AUTOMATION_SUPABASE_SERVICE_ROLE_KEY;
     const queueTable = process.env.AUTOMATION_SUPABASE_QUEUE_TABLE ?? 'task_queue';
     const storageBucket = process.env.AUTOMATION_SUPABASE_STORAGE_BUCKET ?? 'slack-uploads';
 
-    if (!botToken || !supabaseUrl || !supabaseKey) {
-      console.error('[slack/events] Missing env vars (bot token or supabase)');
+    if (!supabaseUrl || !supabaseKey) {
+      console.error('[slack/events] Missing env vars (supabase)');
       return NextResponse.json({ ok: true });
     }
 
     const supabase = createClient(supabaseUrl, supabaseKey);
     const uploadedFiles: { name: string; path: string; publicUrl: string }[] = [];
 
-    for (const file of files) {
-      const downloadUrl = file.url_private_download ?? file.url_private;
-      if (!downloadUrl) continue;
+    // Download and upload files to Supabase Storage if present
+    if (hasFiles && botToken) {
+      for (const file of files!) {
+        const downloadUrl = file.url_private_download ?? file.url_private;
+        if (!downloadUrl) continue;
 
-      try {
-        console.log('[slack/events] Downloading:', file.name, 'from', downloadUrl.slice(0, 80));
-        const { buffer, contentType } = await downloadSlackFile(downloadUrl, botToken);
-        console.log('[slack/events] Downloaded:', file.name, buffer.length, 'bytes');
+        try {
+          console.log('[slack/events] Downloading:', file.name, 'from', downloadUrl.slice(0, 80));
+          const { buffer, contentType } = await downloadSlackFile(downloadUrl, botToken);
+          console.log('[slack/events] Downloaded:', file.name, buffer.length, 'bytes');
 
-        // Store as: slack/<user>/<timestamp>-<filename>
-        const storagePath = `slack/${event.user}/${event.ts}-${file.name}`;
+          // Store as: slack/<user>/<timestamp>-<filename>
+          const storagePath = `slack/${event.user}/${event.ts}-${file.name}`;
 
-        const { error: uploadError } = await supabase.storage
-          .from(storageBucket)
-          .upload(storagePath, buffer, {
-            contentType,
-            upsert: true,
+          const { error: uploadError } = await supabase.storage
+            .from(storageBucket)
+            .upload(storagePath, buffer, {
+              contentType,
+              upsert: true,
+            });
+
+          if (uploadError) {
+            console.error('[slack/events] Storage upload error:', uploadError);
+            continue;
+          }
+
+          const { data: urlData } = supabase.storage
+            .from(storageBucket)
+            .getPublicUrl(storagePath);
+
+          uploadedFiles.push({
+            name: file.name,
+            path: storagePath,
+            publicUrl: urlData.publicUrl,
           });
-
-        if (uploadError) {
-          console.error('[slack/events] Storage upload error:', uploadError);
-          continue;
+        } catch (err) {
+          console.error('[slack/events] File download/upload error:', err);
         }
-
-        const { data: urlData } = supabase.storage
-          .from(storageBucket)
-          .getPublicUrl(storagePath);
-
-        uploadedFiles.push({
-          name: file.name,
-          path: storagePath,
-          publicUrl: urlData.publicUrl,
-        });
-      } catch (err) {
-        console.error('[slack/events] File download/upload error:', err);
       }
+    } else if (hasFiles && !botToken) {
+      console.error('[slack/events] Missing AUTOMATION_SLACK_BOT_TOKEN, cannot download files');
     }
 
-    // Queue a task row with file references
+    // Queue a task row
+    const taskType = hasFiles ? 'file_upload' : 'message';
     const { error: insertError } = await supabase.from(queueTable).insert({
-      prompt: event.text || '(file upload)',
+      prompt: event.text?.trim() || '(file upload)',
       status: 'queued',
-      input_artifacts: uploadedFiles.map((f) => f.publicUrl),
+      ...(uploadedFiles.length > 0 && { input_artifacts: uploadedFiles.map((f) => f.publicUrl) }),
       source_meta: {
         source: 'slack',
-        type: 'file_upload',
+        type: taskType,
         user_id: event.user,
         channel_id: event.channel,
         ts: event.ts,
