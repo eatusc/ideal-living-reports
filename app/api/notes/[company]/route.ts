@@ -34,7 +34,12 @@ export async function POST(
     return NextResponse.json({ error: 'date, action, and doneBy are required' }, { status: 400 });
   }
 
-  appendNote(company, { date: date.trim(), action: action.trim(), doneBy: doneBy.trim() });
+  try {
+    appendNote(company, { date: date.trim(), action: action.trim(), doneBy: doneBy.trim() });
+  } catch (err) {
+    console.error('Failed to save note:', err);
+    return NextResponse.json({ error: 'Failed to write note to disk' }, { status: 500 });
+  }
   return NextResponse.json({ ok: true });
 }
 
@@ -59,8 +64,13 @@ export async function PUT(
     return NextResponse.json({ error: 'index, date, action, and doneBy are required' }, { status: 400 });
   }
 
-  const ok = updateNote(company, index, { date: date.trim(), action: action.trim(), doneBy: doneBy.trim() });
-  if (!ok) return NextResponse.json({ error: 'Note not found' }, { status: 404 });
+  try {
+    const ok = updateNote(company, index, { date: date.trim(), action: action.trim(), doneBy: doneBy.trim() });
+    if (!ok) return NextResponse.json({ error: 'Note not found' }, { status: 404 });
+  } catch (err) {
+    console.error('Failed to update note:', err);
+    return NextResponse.json({ error: 'Failed to write note to disk' }, { status: 500 });
+  }
   return NextResponse.json({ ok: true });
 }
 
@@ -85,7 +95,12 @@ export async function DELETE(
     return NextResponse.json({ error: 'index is required' }, { status: 400 });
   }
 
-  const ok = deleteNote(company, index);
-  if (!ok) return NextResponse.json({ error: 'Note not found' }, { status: 404 });
+  try {
+    const ok = deleteNote(company, index);
+    if (!ok) return NextResponse.json({ error: 'Note not found' }, { status: 404 });
+  } catch (err) {
+    console.error('Failed to delete note:', err);
+    return NextResponse.json({ error: 'Failed to write note to disk' }, { status: 500 });
+  }
   return NextResponse.json({ ok: true });
 }

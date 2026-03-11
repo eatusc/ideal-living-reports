@@ -10,8 +10,16 @@ export interface Note {
 const VALID_COMPANIES = ['rpd-walmart', 'elevate', 'rpd-hd'] as const;
 type Company = typeof VALID_COMPANIES[number];
 
+const IS_VERCEL = !!process.env.VERCEL;
+
+function notesDir(): string {
+  return IS_VERCEL
+    ? path.join('/tmp', 'data', 'notes')
+    : path.join(process.cwd(), 'data', 'notes');
+}
+
 function notesPath(company: Company): string {
-  return path.join(process.cwd(), 'data', 'notes', `${company}.json`);
+  return path.join(notesDir(), `${company}.json`);
 }
 
 export function readNotes(company: Company): Note[] {
