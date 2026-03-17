@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 
 interface Note {
+  id: string;
   date: string;
   action: string;
   doneBy: string;
@@ -27,8 +28,8 @@ export default function NotesSection({ company }: NotesSectionProps) {
   const [action, setAction] = useState('');
   const [doneBy, setDoneBy] = useState(DEFAULT_DONE_BY);
 
-  // Edit state — tracks the original (reversed) index and the note being edited
-  const [editingIdx, setEditingIdx] = useState<number | null>(null);
+  // Edit state — tracks the note id being edited
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [editDate, setEditDate] = useState('');
   const [editAction, setEditAction] = useState('');
   const [editDoneBy, setEditDoneBy] = useState(DEFAULT_DONE_BY);
@@ -36,7 +37,7 @@ export default function NotesSection({ company }: NotesSectionProps) {
   const [editSubmitting, setEditSubmitting] = useState(false);
 
   // Delete confirmation state
-  const [deletingIdx, setDeletingIdx] = useState<number | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const fetchNotes = useCallback(async () => {
     try {
@@ -71,7 +72,7 @@ export default function NotesSection({ company }: NotesSectionProps) {
       });
       if (res.ok) {
         setAction('');
-        setDoneBy(DEFAULT_DONE_BY); // keep default, don't clear
+        setDoneBy(DEFAULT_DONE_BY);
         setDate(today);
         setShowForm(false);
         await fetchNotes();
@@ -86,35 +87,32 @@ export default function NotesSection({ company }: NotesSectionProps) {
     }
   }
 
-  // Open edit form for a note (displayIdx = index in the reversed display array)
-  function openEdit(displayIdx: number) {
-    const note = notes[displayIdx];
-    setEditingIdx(displayIdx);
+  // Open edit form for a note
+  function openEdit(note: Note) {
+    setEditingId(note.id);
     setEditDate(note.date);
     setEditAction(note.action);
     setEditDoneBy(note.doneBy || DEFAULT_DONE_BY);
     setEditError('');
-    setDeletingIdx(null);
+    setDeletingId(null);
   }
 
-  // Save edit — convert display index back to storage index
-  async function handleEditSave(displayIdx: number) {
+  // Save edit
+  async function handleEditSave(id: string) {
     if (!editAction.trim() || !editDoneBy.trim()) {
       setEditError('Action and Done By are required');
       return;
     }
     setEditSubmitting(true);
     setEditError('');
-    // Display is reversed: storage index = (total - 1) - displayIdx
-    const storageIdx = notes.length - 1 - displayIdx;
     try {
       const res = await fetch(`/api/notes/${company}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ index: storageIdx, date: editDate, action: editAction.trim(), doneBy: editDoneBy.trim() }),
+        body: JSON.stringify({ id, date: editDate, action: editAction.trim(), doneBy: editDoneBy.trim() }),
       });
       if (res.ok) {
-        setEditingIdx(null);
+        setEditingId(null);
         await fetchNotes();
       } else {
         const data = await res.json();
@@ -128,17 +126,16 @@ export default function NotesSection({ company }: NotesSectionProps) {
   }
 
   // Delete a note
-  async function handleDelete(displayIdx: number) {
-    const storageIdx = notes.length - 1 - displayIdx;
+  async function handleDelete(id: string) {
     try {
       const res = await fetch(`/api/notes/${company}`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ index: storageIdx }),
+        body: JSON.stringify({ id }),
       });
       if (res.ok) {
-        setDeletingIdx(null);
-        setEditingIdx(null);
+        setDeletingId(null);
+        setEditingId(null);
         await fetchNotes();
       }
     } catch {
@@ -213,9 +210,9 @@ export default function NotesSection({ company }: NotesSectionProps) {
           <p className="px-4 py-5 text-[12px] text-gray-500">No notes yet. Click &quot;+ Add Note&quot; to log campaign activity.</p>
         ) : (
           <ul className="divide-y divide-white/[0.05]">
-            {notes.map((note, displayIdx) => (
-              <li key={displayIdx} className="px-4 py-3">
-                {editingIdx === displayIdx ? (
+            {notes.map((note) => (
+              <li key={note.id} className="px-4 py-3">
+                {editingId === note.id ? (
                   /* ── Inline edit form ── */
                   <div className="space-y-2">
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
@@ -242,32 +239,32 @@ export default function NotesSection({ company }: NotesSectionProps) {
                     {editError && <p className="text-[11px] text-red-400">{editError}</p>}
                     <div className="flex gap-2">
                       <button
-                        onClick={() => handleEditSave(displayIdx)}
+                        onClick={() => handleEditSave(note.id)}
                         disabled={editSubmitting}
                         className="px-3 py-1 text-[11px] font-semibold rounded bg-[#FFC220] text-[#0A0F1C] hover:bg-[#FFD050] disabled:opacity-50 transition-colors"
                       >
                         {editSubmitting ? 'Saving…' : 'Save'}
                       </button>
                       <button
-                        onClick={() => setEditingIdx(null)}
+                        onClick={() => setEditingId(null)}
                         className="px-3 py-1 text-[11px] font-medium rounded border border-white/[0.1] text-gray-400 hover:text-white transition-colors"
                       >
                         Cancel
                       </button>
                     </div>
                   </div>
-                ) : deletingIdx === displayIdx ? (
+                ) : deletingId === note.id ? (
                   /* ── Delete confirmation ── */
                   <div className="flex items-center gap-3">
                     <p className="text-[12px] text-gray-300 flex-1">Delete this note?</p>
                     <button
-                      onClick={() => handleDelete(displayIdx)}
+                      onClick={() => handleDelete(note.id)}
                       className="px-3 py-1 text-[11px] font-semibold rounded bg-red-600 text-white hover:bg-red-500 transition-colors"
                     >
                       Delete
                     </button>
                     <button
-                      onClick={() => setDeletingIdx(null)}
+                      onClick={() => setDeletingId(null)}
                       className="px-3 py-1 text-[11px] font-medium rounded border border-white/[0.1] text-gray-400 hover:text-white transition-colors"
                     >
                       Cancel
@@ -285,13 +282,13 @@ export default function NotesSection({ company }: NotesSectionProps) {
                     </div>
                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
                       <button
-                        onClick={() => openEdit(displayIdx)}
+                        onClick={() => openEdit(note)}
                         className="px-2 py-0.5 text-[10px] font-medium rounded border border-white/[0.1] text-gray-400 hover:text-white hover:border-white/20 transition-colors"
                       >
                         Edit
                       </button>
                       <button
-                        onClick={() => { setDeletingIdx(displayIdx); setEditingIdx(null); }}
+                        onClick={() => { setDeletingId(note.id); setEditingId(null); }}
                         className="px-2 py-0.5 text-[10px] font-medium rounded border border-red-500/30 text-red-400 hover:bg-red-500/10 transition-colors"
                       >
                         Delete

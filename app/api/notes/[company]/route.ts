@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { readNotes, appendNote, updateNote, deleteNote, isValidCompany, type Note } from '@/lib/notes';
+import { readNotes, appendNote, updateNote, deleteNote, isValidCompany } from '@/lib/notes';
 
 export async function GET(
   _request: NextRequest,
@@ -9,7 +9,7 @@ export async function GET(
   if (!isValidCompany(company)) {
     return NextResponse.json({ error: 'Invalid company' }, { status: 400 });
   }
-  const notes = readNotes(company);
+  const notes = await readNotes(company);
   return NextResponse.json(notes);
 }
 
@@ -22,7 +22,7 @@ export async function POST(
     return NextResponse.json({ error: 'Invalid company' }, { status: 400 });
   }
 
-  let body: Partial<Note>;
+  let body: { date?: string; action?: string; doneBy?: string };
   try {
     body = await request.json();
   } catch {
@@ -35,12 +35,12 @@ export async function POST(
   }
 
   try {
-    appendNote(company, { date: date.trim(), action: action.trim(), doneBy: doneBy.trim() });
+    const note = await appendNote(company, { date: date.trim(), action: action.trim(), doneBy: doneBy.trim() });
+    return NextResponse.json({ ok: true, note });
   } catch (err) {
     console.error('Failed to save note:', err);
-    return NextResponse.json({ error: 'Failed to write note to disk' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to save note' }, { status: 500 });
   }
-  return NextResponse.json({ ok: true });
 }
 
 export async function PUT(
@@ -52,24 +52,24 @@ export async function PUT(
     return NextResponse.json({ error: 'Invalid company' }, { status: 400 });
   }
 
-  let body: Partial<Note> & { index?: number };
+  let body: { id?: string; date?: string; action?: string; doneBy?: string };
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
   }
 
-  const { index, date, action, doneBy } = body;
-  if (index === undefined || !date || !action || !doneBy) {
-    return NextResponse.json({ error: 'index, date, action, and doneBy are required' }, { status: 400 });
+  const { id, date, action, doneBy } = body;
+  if (!id || !date || !action || !doneBy) {
+    return NextResponse.json({ error: 'id, date, action, and doneBy are required' }, { status: 400 });
   }
 
   try {
-    const ok = updateNote(company, index, { date: date.trim(), action: action.trim(), doneBy: doneBy.trim() });
+    const ok = await updateNote(company, id, { date: date.trim(), action: action.trim(), doneBy: doneBy.trim() });
     if (!ok) return NextResponse.json({ error: 'Note not found' }, { status: 404 });
   } catch (err) {
     console.error('Failed to update note:', err);
-    return NextResponse.json({ error: 'Failed to write note to disk' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to update note' }, { status: 500 });
   }
   return NextResponse.json({ ok: true });
 }
@@ -83,24 +83,24 @@ export async function DELETE(
     return NextResponse.json({ error: 'Invalid company' }, { status: 400 });
   }
 
-  let body: { index?: number };
+  let body: { id?: string };
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
   }
 
-  const { index } = body;
-  if (index === undefined) {
-    return NextResponse.json({ error: 'index is required' }, { status: 400 });
+  const { id } = body;
+  if (!id) {
+    return NextResponse.json({ error: 'id is required' }, { status: 400 });
   }
 
   try {
-    const ok = deleteNote(company, index);
+    const ok = await deleteNote(company, id);
     if (!ok) return NextResponse.json({ error: 'Note not found' }, { status: 404 });
   } catch (err) {
     console.error('Failed to delete note:', err);
-    return NextResponse.json({ error: 'Failed to write note to disk' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to delete note' }, { status: 500 });
   }
   return NextResponse.json({ ok: true });
 }
