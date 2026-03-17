@@ -1,3 +1,5 @@
+import Link from 'next/link';
+
 export default function HomePage() {
   return (
     <main className="min-h-screen flex items-center justify-center px-6">
@@ -10,8 +12,8 @@ export default function HomePage() {
           Enter the URL of the report you are looking for.
         </p>
         <div className="mt-6 text-[12px] font-mono space-y-2">
-          <a href="/rpd-walmart" className="block text-blue-400 hover:text-blue-300 transition-colors">/rpd-walmart</a>
-          <a href="/rpd-hd" className="block text-blue-400 hover:text-blue-300 transition-colors">/rpd-hd</a>
+          <Link href="/rpd-walmart" className="block text-blue-400 hover:text-blue-300 transition-colors">/rpd-walmart</Link>
+          <Link href="/rpd-hd" className="block text-blue-400 hover:text-blue-300 transition-colors">/rpd-hd</Link>
         </div>
       </div>
     </main>

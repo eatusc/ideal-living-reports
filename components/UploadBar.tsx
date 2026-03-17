@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import { withBasePath } from '@/lib/basePath';
 
 interface UploadBarProps {
   company: 'rpd-walmart' | 'elevate' | 'rpd-hd';
@@ -31,7 +32,7 @@ export default function UploadBar({ company }: UploadBarProps) {
     formData.append('file', selectedFile);
 
     try {
-      const res = await fetch(`/api/upload/${company}`, {
+      const res = await fetch(withBasePath(`/api/upload/${company}`), {
         method: 'POST',
         body: formData,
       });

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { withBasePath } from '@/lib/basePath';
 
 interface Note {
   id: string;
@@ -41,7 +42,7 @@ export default function NotesSection({ company }: NotesSectionProps) {
 
   const fetchNotes = useCallback(async () => {
     try {
-      const res = await fetch(`/api/notes/${company}`);
+      const res = await fetch(withBasePath(`/api/notes/${company}`));
       const data: Note[] = await res.json();
       setNotes(data.slice().reverse()); // newest first
     } catch {
@@ -65,7 +66,7 @@ export default function NotesSection({ company }: NotesSectionProps) {
     setSubmitting(true);
     setFormError('');
     try {
-      const res = await fetch(`/api/notes/${company}`, {
+      const res = await fetch(withBasePath(`/api/notes/${company}`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ date, action: action.trim(), doneBy: doneBy.trim() }),
@@ -106,7 +107,7 @@ export default function NotesSection({ company }: NotesSectionProps) {
     setEditSubmitting(true);
     setEditError('');
     try {
-      const res = await fetch(`/api/notes/${company}`, {
+      const res = await fetch(withBasePath(`/api/notes/${company}`), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id, date: editDate, action: editAction.trim(), doneBy: editDoneBy.trim() }),
@@ -128,7 +129,7 @@ export default function NotesSection({ company }: NotesSectionProps) {
   // Delete a note
   async function handleDelete(id: string) {
     try {
-      const res = await fetch(`/api/notes/${company}`, {
+      const res = await fetch(withBasePath(`/api/notes/${company}`), {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id }),

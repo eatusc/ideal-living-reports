@@ -16,6 +16,7 @@ import RpdWalmartTrendTable from '@/components/RpdWalmartTrendTable';
 import TableChartToggle from '@/components/TableChartToggle';
 import TrendChart, { type ChartMetric, type ChartDataPoint, type ChartNote, type FormatType } from '@/components/TrendChart';
 import { readNotes, type Note } from '@/lib/notes';
+import Link from 'next/link';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -298,7 +299,7 @@ export default async function RpdWalmartPage() {
         <div className="flex gap-3 mb-4 text-[11px] font-mono">
           <span className="text-gray-600">Reports:</span>
           <span className="text-[#FFC220] font-semibold">Walmart</span>
-          <a href="/rpd-hd" className="text-[#F96302] hover:text-[#FF7B2E] transition-colors">Home Depot</a>
+          <Link href="/rpd-hd" className="text-[#F96302] hover:text-[#FF7B2E] transition-colors">Home Depot</Link>
         </div>
 
         {/* ── HEADER ─────────────────────────────────────────── */}

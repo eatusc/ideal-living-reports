@@ -3,12 +3,15 @@ import { NextRequest, NextResponse } from 'next/server';
 const PROTECTED_PREFIXES = ['/rpd-walmart', '/elevate', '/rpd-hd'];
 
 export function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
+  const { pathname, basePath } = request.nextUrl;
+  const normalizedPath = basePath && pathname.startsWith(basePath)
+    ? pathname.slice(basePath.length) || '/'
+    : pathname;
 
   const isProtected =
-    pathname === '/' ||
+    normalizedPath === '/' ||
     PROTECTED_PREFIXES.some(
-      (prefix) => pathname === prefix || pathname.startsWith(prefix + '/')
+      (prefix) => normalizedPath === prefix || normalizedPath.startsWith(prefix + '/')
     );
 
   if (!isProtected) return NextResponse.next();
@@ -16,8 +19,8 @@ export function middleware(request: NextRequest) {
   const pinCookie = request.cookies.get('pin_auth');
   if (pinCookie?.value === '1') return NextResponse.next();
 
-  const loginUrl = new URL('/pin', request.url);
-  loginUrl.searchParams.set('next', pathname);
+  const loginUrl = new URL(`${basePath || ''}/pin`, request.url);
+  loginUrl.searchParams.set('next', normalizedPath);
   return NextResponse.redirect(loginUrl);
 }
 

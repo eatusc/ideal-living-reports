@@ -9,6 +9,7 @@ import RetailerTrendTable from '@/components/RetailerTrendTable';
 import TableChartToggle from '@/components/TableChartToggle';
 import TrendChart, { type ChartMetric, type ChartDataPoint, type ChartNote } from '@/components/TrendChart';
 import { readNotes, type Note } from '@/lib/notes';
+import Link from 'next/link';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -391,7 +392,7 @@ export default async function RpdHdPage() {
         {/* ── NAV LINKS ────────────────────────────────────────── */}
         <div className="flex gap-3 mb-4 text-[11px] font-mono">
           <span className="text-gray-600">Reports:</span>
-          <a href="/rpd-walmart" className="text-[#FFC220] hover:text-[#FFD54F] transition-colors">Walmart</a>
+          <Link href="/rpd-walmart" className="text-[#FFC220] hover:text-[#FFD54F] transition-colors">Walmart</Link>
           <span className="text-[#F96302] font-semibold">Home Depot</span>
         </div>
 

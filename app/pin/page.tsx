@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
+import { withBasePath } from '@/lib/basePath';
 
 function PinForm() {
   const router = useRouter();
@@ -50,7 +51,7 @@ function PinForm() {
   async function submit(pin: string) {
     setLoading(true);
     try {
-      const res = await fetch('/api/auth', {
+      const res = await fetch(withBasePath('/api/auth'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ pin, next }),
