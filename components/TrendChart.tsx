@@ -68,17 +68,33 @@ function ChartTooltip({
   label,
   metrics,
   notes,
+  hoveredNote,
 }: {
   active?: boolean;
   payload?: Array<{ dataKey: string; value: number; color: string }>;
   label?: string;
   metrics: ChartMetric[];
   notes?: ChartNote[];
+  hoveredNote?: ChartNote | null;
 }) {
   if (!active || !payload?.length) return null;
 
   const metricMap = new Map(metrics.map((m) => [m.key, m]));
   const weekNotes = notes?.filter((n) => n.weekLabel === label) ?? [];
+  const showNoteOnly = Boolean(hoveredNote && hoveredNote.weekLabel === label);
+
+  if (showNoteOnly) {
+    return (
+      <div className="bg-[#111827] border border-white/[0.12] rounded-lg px-3 py-2.5 shadow-xl text-[11px] max-w-[260px]">
+        <div className="font-semibold text-white mb-1.5">{label}</div>
+        {weekNotes.map((n, i) => (
+          <div key={i} className="text-gray-300 text-[10px] leading-relaxed whitespace-pre-line">
+            <span className="text-amber-400">{n.date}</span>: {n.text}
+          </div>
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div className="bg-[#111827] border border-white/[0.12] rounded-lg px-3 py-2.5 shadow-xl text-[11px] max-w-[260px]">
@@ -112,11 +128,49 @@ function ChartTooltip({
 
 // ─── Note label rendered at top of reference line ───────────────────────────
 
-function NoteMarker({ viewBox, note }: { viewBox?: { x: number; y: number }; note: ChartNote }) {
+function NoteMarker({
+  viewBox,
+  note,
+  onHover,
+}: {
+  viewBox?: { x: number; y: number };
+  note: ChartNote;
+  onHover: (note: ChartNote | null) => void;
+}) {
   if (!viewBox) return null;
   return (
-    <g>
-      <circle cx={viewBox.x} cy={8} r={4} fill="#F59E0B" />
+    <g transform={`translate(${viewBox.x - 8}, 6)`}>
+      <circle
+        cx={8}
+        cy={8}
+        r={12}
+        fill="transparent"
+        style={{ cursor: 'pointer' }}
+        onMouseEnter={() => onHover(note)}
+        onMouseLeave={() => onHover(null)}
+      />
+      <rect
+        x={1}
+        y={1}
+        width={14}
+        height={14}
+        rx={3}
+        fill="#111827"
+        stroke="#F59E0B"
+        strokeWidth={1.5}
+        style={{ pointerEvents: 'none' }}
+      />
+      <text
+        x={8}
+        y={11}
+        textAnchor="middle"
+        fontSize={8}
+        fontWeight={700}
+        fill="#F59E0B"
+        style={{ pointerEvents: 'none' }}
+      >
+        N
+      </text>
       <title>{`${note.date}: ${note.text}`}</title>
     </g>
   );
@@ -137,6 +191,8 @@ export default function TrendChart({
     });
     return init;
   });
+  const [hoveredMetric, setHoveredMetric] = useState<string | null>(null);
+  const [hoveredNote, setHoveredNote] = useState<ChartNote | null>(null);
 
   const toggle = useCallback((key: string) => {
     setVisible((prev) => {
@@ -162,16 +218,19 @@ export default function TrendChart({
       <div className="flex flex-wrap gap-2 mb-4">
         {metrics.map((m) => {
           const isOn = visible.has(m.key);
+          const isHovered = hoveredMetric === m.key;
           return (
             <button
               key={m.key}
               onClick={() => toggle(m.key)}
+              onMouseEnter={() => setHoveredMetric(m.key)}
+              onMouseLeave={() => setHoveredMetric(null)}
               className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-[0.5px] border transition-all ${
                 isOn
                   ? 'border-white/[0.15] text-white'
                   : 'border-white/[0.06] text-gray-600 hover:text-gray-400'
               }`}
-              style={isOn ? { backgroundColor: `${m.color}15` } : undefined}
+              style={isOn || isHovered ? { backgroundColor: `${m.color}15` } : undefined}
             >
               <span
                 className="w-2 h-2 rounded-full flex-shrink-0"
@@ -231,7 +290,7 @@ export default function TrendChart({
           )}
 
           <Tooltip
-            content={<ChartTooltip metrics={metrics} notes={notes} />}
+            content={<ChartTooltip metrics={metrics} notes={notes} hoveredNote={hoveredNote} />}
             cursor={{ stroke: 'rgba(255,255,255,0.08)' }}
           />
 
@@ -243,7 +302,7 @@ export default function TrendChart({
               stroke="#F59E0B"
               strokeDasharray="4 4"
               strokeOpacity={0.5}
-              label={<NoteMarker note={note} />}
+              label={<NoteMarker note={note} onHover={setHoveredNote} />}
             />
           ))}
 
@@ -255,8 +314,9 @@ export default function TrendChart({
                 dataKey={m.key}
                 yAxisId={m.yAxisId === 'count' && !hasPct ? 'count' : m.yAxisId === 'count' ? 'pct' : m.yAxisId}
                 stroke={m.color}
-                strokeWidth={2}
-                dot={{ r: 3, fill: m.color, strokeWidth: 0 }}
+                strokeWidth={hoveredMetric === m.key ? 3 : 2}
+                strokeOpacity={hoveredMetric && hoveredMetric !== m.key ? 0.2 : 1}
+                dot={{ r: hoveredMetric === m.key ? 4 : 3, fill: m.color, strokeWidth: 0 }}
                 activeDot={{ r: 5, fill: m.color, strokeWidth: 2, stroke: '#111827' }}
                 connectNulls
               />
