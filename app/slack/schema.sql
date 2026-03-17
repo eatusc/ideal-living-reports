@@ -54,7 +54,7 @@ create table if not exists public.task_status_posts (
 create index if not exists idx_task_status_posts_task_time
   on public.task_status_posts (supabase_task_id, created_at desc);
 
-create or replace function public.set_updated_at()
+create or replace function public.slack_set_updated_at()
 returns trigger
 language plpgsql
 as $$
@@ -68,4 +68,4 @@ drop trigger if exists trg_slack_task_threads_updated_at on public.slack_task_th
 create trigger trg_slack_task_threads_updated_at
 before update on public.slack_task_threads
 for each row
-execute function public.set_updated_at();
+execute function public.slack_set_updated_at();
