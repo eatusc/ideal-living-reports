@@ -6,6 +6,9 @@ import UploadBar from '@/components/UploadBar';
 import NotesSection from '@/components/NotesSection';
 import RpdHdTrendTable from '@/components/RpdHdTrendTable';
 import RetailerTrendTable from '@/components/RetailerTrendTable';
+import TableChartToggle from '@/components/TableChartToggle';
+import TrendChart, { type ChartMetric, type ChartDataPoint, type ChartNote } from '@/components/TrendChart';
+import { readNotes, type Note } from '@/lib/notes';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -307,11 +310,90 @@ export default async function RpdHdPage() {
     }
   }
 
+  // ── Chart data prep ──
+  let hdNotes: Note[] = [];
+  try { hdNotes = await readNotes('rpd-hd'); } catch { /* ignore */ }
+
+  const hdTrendMetrics: ChartMetric[] = [
+    { key: 'sales', label: 'Total Sales', color: '#22C55E', yAxisId: 'dollar', formatType: 'dollar', defaultVisible: true },
+    { key: 'adSpend', label: 'Ad Spend', color: '#EF4444', yAxisId: 'dollar', formatType: 'dollar', defaultVisible: true },
+    { key: 'adSales', label: 'Ad Sales', color: '#3B82F6', yAxisId: 'dollar', formatType: 'dollar', defaultVisible: true },
+    { key: 'organicSales', label: 'Organic Sales', color: '#A855F7', yAxisId: 'dollar', formatType: 'dollar', defaultVisible: false },
+    { key: 'units', label: 'Units', color: '#06B6D4', yAxisId: 'count', formatType: 'number', defaultVisible: false },
+    { key: 'acos', label: 'ACoS', color: '#F59E0B', yAxisId: 'pct', formatType: 'pct', defaultVisible: true },
+    { key: 'roas', label: 'ROAS', color: '#8B5CF6', yAxisId: 'pct', formatType: 'roas' },
+  ];
+
+  const hdTrendChartData: ChartDataPoint[] = displayWeeks.map((w) => {
+    const dsco = dscoByDate.get(w.startDate ?? '') ?? dscoByLabel.get(w.label);
+    return {
+      label: w.startDate ? `${w.startDate}` : w.label,
+      sales: dsco?.sales ?? 0,
+      adSpend: w.adSpend,
+      adSales: w.adSales,
+      organicSales: dsco ? Math.max(0, dsco.sales - w.adSales) : 0,
+      units: dsco?.units ?? 0,
+      acos: w.acos !== null ? w.acos * 100 : null,
+      roas: w.roas,
+    };
+  });
+
+  // Map notes to weeks
+  const hdChartNotes: ChartNote[] = hdNotes.flatMap((n) => {
+    const noteDate = new Date(n.date);
+    if (isNaN(noteDate.getTime())) return [];
+    for (const w of displayWeeks) {
+      if (!w.startDate || !w.endDate) continue;
+      const year = new Date().getFullYear();
+      const start = new Date(`${w.startDate}, ${year}`);
+      const end = new Date(`${w.endDate}, ${year}`);
+      end.setHours(23, 59, 59);
+      if (noteDate >= start && noteDate <= end) {
+        return [{ date: n.date, text: n.action, weekLabel: w.startDate }];
+      }
+    }
+    return [];
+  });
+
+  // Campaign group chart data
+  const allGroupNames = [...new Set(displayWeeks.flatMap((w) => w.groups.map((g) => g.group)))];
+  const groupColors = ['#22C55E', '#3B82F6', '#EF4444', '#F59E0B', '#A855F7', '#EC4899', '#06B6D4', '#10B981', '#F97316', '#6366F1'];
+  const groupMetrics: ChartMetric[] = allGroupNames
+    .filter((name) => {
+      const lastWeek = displayWeeks[displayWeeks.length - 1];
+      return lastWeek?.groups.some((g) => g.group === name && (g.adSpend > 0 || g.adSales > 0));
+    })
+    .slice(0, 10)
+    .map((name, i) => ({
+      key: name,
+      label: name,
+      color: groupColors[i % groupColors.length],
+      yAxisId: 'dollar' as const,
+      formatType: 'dollar' as const,
+      defaultVisible: true,
+    }));
+
+  const groupChartData: ChartDataPoint[] = displayWeeks.map((w) => {
+    const point: ChartDataPoint = { label: w.startDate ? `${w.startDate}` : w.label };
+    for (const gm of groupMetrics) {
+      const group = w.groups.find((g) => g.group === gm.key);
+      point[gm.key] = group?.adSales ?? 0;
+    }
+    return point;
+  });
+
   return (
     <main className="min-h-screen px-4 sm:px-6 py-10">
       <div className="max-w-[1100px] mx-auto">
 
         <UploadBar company="rpd-hd" />
+
+        {/* ── NAV LINKS ────────────────────────────────────────── */}
+        <div className="flex gap-3 mb-4 text-[11px] font-mono">
+          <span className="text-gray-600">Reports:</span>
+          <a href="/rpd-walmart" className="text-[#FFC220] hover:text-[#FFD54F] transition-colors">Walmart</a>
+          <span className="text-[#F96302] font-semibold">Home Depot</span>
+        </div>
 
         {/* ── HEADER ─────────────────────────────────────────── */}
         <header className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-10 pb-6 border-b border-white/[0.08]">
@@ -351,55 +433,71 @@ export default async function RpdHdPage() {
 
         {/* ── CAMPAIGN GROUP BREAKDOWN ───────────────────────── */}
         <SectionTitle>🏷️ Campaign Group Breakdown — Current vs. Previous Week <span className="text-gray-600 normal-case font-normal tracking-normal text-[9px] ml-1">Source: Orange Access</span></SectionTitle>
-        <div className="bg-dash-card border border-white/[0.08] rounded-lg overflow-hidden">
-          <div className="table-scroll">
-            <table className="w-full border-collapse text-[12px]">
-              <thead>
-                <tr className="bg-dash-card2 border-b border-white/[0.08]">
-                  {['Campaign Group', 'Curr Ad Spend', 'Prev Ad Spend', 'Spend WoW Δ%', 'Ad Sales', 'Prev Ad Sales', 'ACoS', 'ROAS', 'Impressions'].map((h) => (
-                    <th key={h} className={`${h === 'Campaign Group' ? 'text-left' : 'text-right'} px-3.5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.8px] text-gray-400 whitespace-nowrap`}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {groupRows.map(({ name, curr: c, prev: p }) => {
-                  const currSpend = c?.adSpend ?? 0;
-                  const prevSpend = p?.adSpend ?? 0;
-                  const spendWowVal = wowPct(currSpend, prevSpend);
-                  const wow = wowArrow(spendWowVal, true);
-                  const acos = c?.acos ?? null;
-                  const flagAcos = acos !== null && acos > 0.7;
-                  const flagZeroSalesSpend = currSpend > 0 && (c?.adSales ?? 0) === 0;
-                  const flagged = flagAcos || flagZeroSalesSpend;
-                  return (
-                    <tr key={name} className="border-b border-white/[0.05] hover:bg-white/[0.02] transition-colors last:border-0">
-                      <td className="px-3.5 py-2.5 font-sans font-medium text-[13px] text-white whitespace-nowrap">
-                        {flagged && <span className="mr-1.5 text-amber-400">⚠️</span>}
-                        {name}
-                      </td>
-                      <td className="px-3.5 py-2.5 text-right font-mono text-[#E8EDF5]">{fmtDollar(currSpend)}</td>
-                      <td className="px-3.5 py-2.5 text-right font-mono text-gray-400">{fmtDollar(prevSpend)}</td>
-                      <td className={`px-3.5 py-2.5 text-right font-mono font-semibold ${wow.cls}`}>{spendWowVal === null ? '—' : `${wow.symbol} ${Math.abs(spendWowVal * 100).toFixed(0)}%`}</td>
-                      <td className="px-3.5 py-2.5 text-right font-mono text-[#E8EDF5]">{c?.adSales ? fmtDollar(c.adSales) : '—'}</td>
-                      <td className="px-3.5 py-2.5 text-right font-mono text-gray-400">{p?.adSales ? fmtDollar(p.adSales) : '—'}</td>
-                      <td className={`px-3.5 py-2.5 text-right font-mono font-semibold ${acosColor(acos)}`}>{acos !== null && acos > 0 ? fmtPct(acos) : '—'}</td>
-                      <td className="px-3.5 py-2.5 text-right font-mono text-[#E8EDF5]">{fmtRoas(c?.roas ?? null)}</td>
-                      <td className="px-3.5 py-2.5 text-right font-mono text-gray-400">{c?.impressions ? c.impressions.toLocaleString('en-US') : '—'}</td>
+        <TableChartToggle
+          accentColor="#F96302"
+          tableContent={
+            <div className="bg-dash-card border border-white/[0.08] rounded-lg overflow-hidden">
+              <div className="table-scroll">
+                <table className="w-full border-collapse text-[12px]">
+                  <thead>
+                    <tr className="bg-dash-card2 border-b border-white/[0.08]">
+                      {['Campaign Group', 'Curr Ad Spend', 'Prev Ad Spend', 'Spend WoW Δ%', 'Ad Sales', 'Prev Ad Sales', 'ACoS', 'ROAS', 'Impressions'].map((h) => (
+                        <th key={h} className={`${h === 'Campaign Group' ? 'text-left' : 'text-right'} px-3.5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.8px] text-gray-400 whitespace-nowrap`}>{h}</th>
+                      ))}
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
+                  </thead>
+                  <tbody>
+                    {groupRows.map(({ name, curr: c, prev: p }) => {
+                      const currSpend = c?.adSpend ?? 0;
+                      const prevSpend = p?.adSpend ?? 0;
+                      const spendWowVal = wowPct(currSpend, prevSpend);
+                      const wow = wowArrow(spendWowVal, true);
+                      const acos = c?.acos ?? null;
+                      const flagAcos = acos !== null && acos > 0.7;
+                      const flagZeroSalesSpend = currSpend > 0 && (c?.adSales ?? 0) === 0;
+                      const flagged = flagAcos || flagZeroSalesSpend;
+                      return (
+                        <tr key={name} className="border-b border-white/[0.05] hover:bg-white/[0.02] transition-colors last:border-0">
+                          <td className="px-3.5 py-2.5 font-sans font-medium text-[13px] text-white whitespace-nowrap">
+                            {flagged && <span className="mr-1.5 text-amber-400">⚠️</span>}
+                            {name}
+                          </td>
+                          <td className="px-3.5 py-2.5 text-right font-mono text-[#E8EDF5]">{fmtDollar(currSpend)}</td>
+                          <td className="px-3.5 py-2.5 text-right font-mono text-gray-400">{fmtDollar(prevSpend)}</td>
+                          <td className={`px-3.5 py-2.5 text-right font-mono font-semibold ${wow.cls}`}>{spendWowVal === null ? '—' : `${wow.symbol} ${Math.abs(spendWowVal * 100).toFixed(0)}%`}</td>
+                          <td className="px-3.5 py-2.5 text-right font-mono text-[#E8EDF5]">{c?.adSales ? fmtDollar(c.adSales) : '—'}</td>
+                          <td className="px-3.5 py-2.5 text-right font-mono text-gray-400">{p?.adSales ? fmtDollar(p.adSales) : '—'}</td>
+                          <td className={`px-3.5 py-2.5 text-right font-mono font-semibold ${acosColor(acos)}`}>{acos !== null && acos > 0 ? fmtPct(acos) : '—'}</td>
+                          <td className="px-3.5 py-2.5 text-right font-mono text-[#E8EDF5]">{fmtRoas(c?.roas ?? null)}</td>
+                          <td className="px-3.5 py-2.5 text-right font-mono text-gray-400">{c?.impressions ? c.impressions.toLocaleString('en-US') : '—'}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          }
+          chartContent={
+            groupMetrics.length > 0
+              ? <TrendChart data={groupChartData} metrics={groupMetrics} notes={hdChartNotes} accentColor="#F96302" />
+              : <div className="text-gray-500 text-sm p-4">No campaign group data available for chart.</div>
+          }
+        />
 
         {/* ── WEEKLY TREND TABLE ─────────────────────────────── */}
         <SectionTitle>📈 Weekly Trend — Orange Access + Home Depot - 2026 + Home Depot Canada - 2026</SectionTitle>
-        <RpdHdTrendTable
-          displayWeeks={displayWeeks}
-          currentLabel={curr.label}
-          dscoByDate={Object.fromEntries(dscoByDate)}
-          dscoByLabel={Object.fromEntries(dscoByLabel)}
+        <TableChartToggle
+          accentColor="#F96302"
+          tableContent={
+            <RpdHdTrendTable
+              displayWeeks={displayWeeks}
+              currentLabel={curr.label}
+              dscoByDate={Object.fromEntries(dscoByDate)}
+              dscoByLabel={Object.fromEntries(dscoByLabel)}
+            />
+          }
+          chartContent={<TrendChart data={hdTrendChartData} metrics={hdTrendMetrics} notes={hdChartNotes} accentColor="#F96302" />}
         />
 
         {/* ── RETAILER DIRECT SALES ─────────────────────────── */}

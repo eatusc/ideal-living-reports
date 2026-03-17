@@ -5,6 +5,9 @@ import { wowPct, fmtDollar, fmtPct, fmtRoas } from '@/lib/parseExcel';
 import UploadBar from '@/components/UploadBar';
 import NotesSection from '@/components/NotesSection';
 import { ElevateAmazonTrendTable, ElevateWalmartTrendTable } from '@/components/ElevateTrendTables';
+import TableChartToggle from '@/components/TableChartToggle';
+import TrendChart, { type ChartMetric, type ChartDataPoint, type ChartNote } from '@/components/TrendChart';
+import { readNotes, type Note } from '@/lib/notes';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -145,12 +148,114 @@ export default async function ElevatePage() {
   }
 
   const { amazon, walmart, sem } = data;
+
+  // ── Chart data prep ──
+  let notes: Note[] = [];
+  try { notes = await readNotes('elevate'); } catch { /* ignore */ }
+
+  // Helper to map notes to weeks
+  function mapNotesToWeeks(weekData: Array<{ label: string; startDate?: string; endDate?: string }>): ChartNote[] {
+    return notes.flatMap((n) => {
+      const noteDate = new Date(n.date);
+      if (isNaN(noteDate.getTime())) return [];
+      for (const w of weekData) {
+        if (!w.startDate || !w.endDate) continue;
+        const year = new Date().getFullYear();
+        const start = new Date(`${w.startDate}, ${year}`);
+        const end = new Date(`${w.endDate}, ${year}`);
+        end.setHours(23, 59, 59);
+        if (noteDate >= start && noteDate <= end) {
+          return [{ date: n.date, text: n.action, weekLabel: w.startDate }];
+        }
+      }
+      return [];
+    });
+  }
+
+  // Amazon chart
+  const amazonMetrics: ChartMetric[] = [
+    { key: 'sales', label: 'Total Sales', color: '#22C55E', yAxisId: 'dollar', formatType: 'dollar', defaultVisible: true },
+    { key: 'adSpend', label: 'Ad Spend', color: '#EF4444', yAxisId: 'dollar', formatType: 'dollar', defaultVisible: true },
+    { key: 'adSales', label: 'Ad Sales', color: '#3B82F6', yAxisId: 'dollar', formatType: 'dollar', defaultVisible: true },
+    { key: 'units', label: 'Units', color: '#06B6D4', yAxisId: 'count', formatType: 'number', defaultVisible: false },
+    { key: 'orders', label: 'Orders', color: '#EC4899', yAxisId: 'count', formatType: 'number', defaultVisible: false },
+    { key: 'sessions', label: 'Sessions', color: '#A855F7', yAxisId: 'count', formatType: 'number', defaultVisible: false },
+    { key: 'acos', label: 'ACoS', color: '#F59E0B', yAxisId: 'pct', formatType: 'pct', defaultVisible: true },
+    { key: 'roas', label: 'ROAS', color: '#8B5CF6', yAxisId: 'pct', formatType: 'roas' },
+  ];
+
+  const amazonChartData: ChartDataPoint[] = amazon.weeks.map((w) => ({
+    label: w.startDate ? `${w.startDate}` : w.label,
+    sales: w.sales,
+    adSpend: w.adSpend,
+    adSales: w.adSales,
+    units: w.units,
+    orders: w.orders,
+    sessions: w.sessions,
+    acos: w.acos !== null ? w.acos * 100 : null,
+    roas: w.roas,
+  }));
+
+  const amazonChartNotes = mapNotesToWeeks(amazon.weeks);
+
+  // Walmart chart
+  const walmartMetrics: ChartMetric[] = [
+    { key: 'sales', label: 'Total Sales', color: '#22C55E', yAxisId: 'dollar', formatType: 'dollar', defaultVisible: true },
+    { key: 'adSpend', label: 'Ad Spend', color: '#EF4444', yAxisId: 'dollar', formatType: 'dollar', defaultVisible: true },
+    { key: 'adSales', label: 'Ad Sales', color: '#3B82F6', yAxisId: 'dollar', formatType: 'dollar', defaultVisible: true },
+    { key: 'organicSales', label: 'Organic Sales', color: '#A855F7', yAxisId: 'dollar', formatType: 'dollar', defaultVisible: false },
+    { key: 'units', label: 'Units', color: '#06B6D4', yAxisId: 'count', formatType: 'number', defaultVisible: false },
+    { key: 'acos', label: 'ACoS', color: '#F59E0B', yAxisId: 'pct', formatType: 'pct', defaultVisible: true },
+    { key: 'roas', label: 'ROAS', color: '#8B5CF6', yAxisId: 'pct', formatType: 'roas' },
+  ];
+
+  const walmartChartData: ChartDataPoint[] = walmart.weeks.map((w) => ({
+    label: w.startDate ? `${w.startDate}` : w.label,
+    sales: w.sales,
+    adSpend: w.adSpend,
+    adSales: w.adSales,
+    organicSales: w.organicSales,
+    units: w.units,
+    acos: w.acos !== null ? w.acos * 100 : null,
+    roas: w.roas,
+  }));
+
+  const walmartChartNotes = mapNotesToWeeks(walmart.weeks);
+
+  // SEM chart
+  const semMetrics: ChartMetric[] = [
+    { key: 'adSpend', label: 'Ad Spend', color: '#EF4444', yAxisId: 'dollar', formatType: 'dollar', defaultVisible: true },
+    { key: 'adSales', label: 'Ad Sales', color: '#3B82F6', yAxisId: 'dollar', formatType: 'dollar', defaultVisible: true },
+    { key: 'acos', label: 'ACoS', color: '#F59E0B', yAxisId: 'pct', formatType: 'pct', defaultVisible: true },
+    { key: 'roas', label: 'ROAS', color: '#8B5CF6', yAxisId: 'pct', formatType: 'roas' },
+    { key: 'impressions', label: 'Impressions', color: '#06B6D4', yAxisId: 'count', formatType: 'number', defaultVisible: false },
+  ];
+
   const amzCurr = amazon.currentWeek;
   const amzPrev = amazon.previousWeek;
   const walmCurr = walmart.currentWeek;
   const walmPrev = walmart.previousWeek;
   const semCurr = sem.currentWeek;
   const semPrev = sem.previousWeek;
+
+  const semChartData: ChartDataPoint[] = [
+    {
+      label: 'Previous Week',
+      adSpend: semPrev.adSpend,
+      adSales: semPrev.adSales,
+      acos: semPrev.acos !== null ? semPrev.acos * 100 : null,
+      roas: semPrev.roas,
+      impressions: semPrev.impressions,
+    },
+    {
+      label: 'Current Week',
+      adSpend: semCurr.adSpend,
+      adSales: semCurr.adSales,
+      acos: semCurr.acos !== null ? semCurr.acos * 100 : null,
+      roas: semCurr.roas,
+      impressions: semCurr.impressions,
+    },
+  ];
 
   // Amazon WoW
   const amzSalesWow = wowArrow(wowPct(amzCurr.sales, amzPrev.sales));
@@ -183,7 +288,7 @@ export default async function ElevatePage() {
 
         <UploadBar company="elevate" />
 
-        {/* ── HEADER ─────────────────────────────────────────── */}
+{/* ── HEADER ─────────────────────────────────────────── */}
         <header className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-10 pb-6 border-b border-white/[0.08]">
           <div>
             <div className="flex items-center gap-2.5 mb-1.5">
@@ -226,7 +331,11 @@ export default async function ElevatePage() {
 
         {/* ── AMAZON TREND TABLE ─────────────────────────────── */}
         <SectionTitle>📈 Amazon Weekly Trend</SectionTitle>
-        <ElevateAmazonTrendTable weeks={amazon.weeks} />
+        <TableChartToggle
+          accentColor="#FF9900"
+          tableContent={<ElevateAmazonTrendTable weeks={amazon.weeks} />}
+          chartContent={<TrendChart data={amazonChartData} metrics={amazonMetrics} notes={amazonChartNotes} accentColor="#FF9900" />}
+        />
 
         {/* ══════════════════════════════════════════════════════ */}
         <PlatformDivider title="Walmart" color="#0071CE" />
@@ -245,7 +354,11 @@ export default async function ElevatePage() {
 
         {/* ── WALMART TREND TABLE ────────────────────────────── */}
         <SectionTitle>📈 Walmart Weekly Trend</SectionTitle>
-        <ElevateWalmartTrendTable weeks={walmart.weeks} />
+        <TableChartToggle
+          accentColor="#0071CE"
+          tableContent={<ElevateWalmartTrendTable weeks={walmart.weeks} />}
+          chartContent={<TrendChart data={walmartChartData} metrics={walmartMetrics} notes={walmartChartNotes} accentColor="#0071CE" />}
+        />
 
         {/* ══════════════════════════════════════════════════════ */}
         <PlatformDivider title="SEM Campaigns" color="#A855F7" />
@@ -260,47 +373,53 @@ export default async function ElevatePage() {
         </div>
 
         {/* SEM Campaign Table */}
-        {semCurr.campaigns.filter((c) => c.adSpend > 0 || c.adSales > 0).length > 0 && (() => {
-          const prevMap = new Map(semPrev.campaigns.map((c) => [c.campaign, c]));
-          const rows = semCurr.campaigns
-            .filter((c) => c.adSpend > 0 || c.adSales > 0)
-            .sort((a, b) => b.adSpend - a.adSpend)
-            .map((c) => ({ curr: c, prev: prevMap.get(c.campaign) ?? null }));
-          return (
-            <div className="bg-dash-card border border-white/[0.08] rounded-lg overflow-hidden mb-2">
-              <div className="table-scroll">
-                <table className="w-full border-collapse text-[12px]">
-                  <thead>
-                    <tr className="bg-dash-card2 border-b border-white/[0.08]">
-                      {['Campaign', 'Ad Spend', 'Prev Spend', 'WoW Δ%', 'Ad Sales', 'Prev Ad Sales', 'ACoS', 'ROAS', 'Impressions'].map((h) => (
-                        <th key={h} className={`${h === 'Campaign' ? 'text-left' : 'text-right'} px-3.5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.8px] text-gray-400 whitespace-nowrap`}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rows.map(({ curr: c, prev: p }) => {
-                      const spendWowVal = wowPct(c.adSpend, p?.adSpend ?? 0);
-                      const spendWow = wowArrow(spendWowVal, true);
-                      return (
-                        <tr key={c.campaign} className="border-b border-white/[0.05] hover:bg-white/[0.02] transition-colors last:border-0">
-                          <td className="px-3.5 py-2.5 font-sans font-medium text-[13px] text-white">{c.campaign}</td>
-                          <td className="px-3.5 py-2.5 text-right font-mono text-[#E8EDF5]">{fmtDollar(c.adSpend)}</td>
-                          <td className="px-3.5 py-2.5 text-right font-mono text-gray-400">{p ? fmtDollar(p.adSpend) : '—'}</td>
-                          <td className={`px-3.5 py-2.5 text-right font-mono font-semibold ${spendWow.cls}`}>{spendWowVal === null ? '—' : `${spendWow.symbol} ${Math.abs(spendWowVal * 100).toFixed(0)}%`}</td>
-                          <td className="px-3.5 py-2.5 text-right font-mono text-[#E8EDF5]">{c.adSales > 0 ? fmtDollar(c.adSales) : '—'}</td>
-                          <td className="px-3.5 py-2.5 text-right font-mono text-gray-400">{p && p.adSales > 0 ? fmtDollar(p.adSales) : '—'}</td>
-                          <td className={`px-3.5 py-2.5 text-right font-mono font-semibold ${acosColor(c.acos)}`}>{c.acos !== null && c.acos > 0 ? fmtPct(c.acos) : '—'}</td>
-                          <td className="px-3.5 py-2.5 text-right font-mono text-[#E8EDF5]">{fmtRoas(c.roas)}</td>
-                          <td className="px-3.5 py-2.5 text-right font-mono text-gray-400">{c.impressions > 0 ? c.impressions.toLocaleString('en-US') : '—'}</td>
+        <TableChartToggle
+          accentColor="#A855F7"
+          tableContent={
+            semCurr.campaigns.filter((c) => c.adSpend > 0 || c.adSales > 0).length > 0 ? (() => {
+              const prevMap = new Map(semPrev.campaigns.map((c) => [c.campaign, c]));
+              const rows = semCurr.campaigns
+                .filter((c) => c.adSpend > 0 || c.adSales > 0)
+                .sort((a, b) => b.adSpend - a.adSpend)
+                .map((c) => ({ curr: c, prev: prevMap.get(c.campaign) ?? null }));
+              return (
+                <div className="bg-dash-card border border-white/[0.08] rounded-lg overflow-hidden mb-2">
+                  <div className="table-scroll">
+                    <table className="w-full border-collapse text-[12px]">
+                      <thead>
+                        <tr className="bg-dash-card2 border-b border-white/[0.08]">
+                          {['Campaign', 'Ad Spend', 'Prev Spend', 'WoW Δ%', 'Ad Sales', 'Prev Ad Sales', 'ACoS', 'ROAS', 'Impressions'].map((h) => (
+                            <th key={h} className={`${h === 'Campaign' ? 'text-left' : 'text-right'} px-3.5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.8px] text-gray-400 whitespace-nowrap`}>{h}</th>
+                          ))}
                         </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          );
-        })()}
+                      </thead>
+                      <tbody>
+                        {rows.map(({ curr: c, prev: p }) => {
+                          const spendWowVal = wowPct(c.adSpend, p?.adSpend ?? 0);
+                          const spendWow = wowArrow(spendWowVal, true);
+                          return (
+                            <tr key={c.campaign} className="border-b border-white/[0.05] hover:bg-white/[0.02] transition-colors last:border-0">
+                              <td className="px-3.5 py-2.5 font-sans font-medium text-[13px] text-white">{c.campaign}</td>
+                              <td className="px-3.5 py-2.5 text-right font-mono text-[#E8EDF5]">{fmtDollar(c.adSpend)}</td>
+                              <td className="px-3.5 py-2.5 text-right font-mono text-gray-400">{p ? fmtDollar(p.adSpend) : '—'}</td>
+                              <td className={`px-3.5 py-2.5 text-right font-mono font-semibold ${spendWow.cls}`}>{spendWowVal === null ? '—' : `${spendWow.symbol} ${Math.abs(spendWowVal * 100).toFixed(0)}%`}</td>
+                              <td className="px-3.5 py-2.5 text-right font-mono text-[#E8EDF5]">{c.adSales > 0 ? fmtDollar(c.adSales) : '—'}</td>
+                              <td className="px-3.5 py-2.5 text-right font-mono text-gray-400">{p && p.adSales > 0 ? fmtDollar(p.adSales) : '—'}</td>
+                              <td className={`px-3.5 py-2.5 text-right font-mono font-semibold ${acosColor(c.acos)}`}>{c.acos !== null && c.acos > 0 ? fmtPct(c.acos) : '—'}</td>
+                              <td className="px-3.5 py-2.5 text-right font-mono text-[#E8EDF5]">{fmtRoas(c.roas)}</td>
+                              <td className="px-3.5 py-2.5 text-right font-mono text-gray-400">{c.impressions > 0 ? c.impressions.toLocaleString('en-US') : '—'}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              );
+            })() : null
+          }
+          chartContent={<TrendChart data={semChartData} metrics={semMetrics} accentColor="#A855F7" />}
+        />
 
         {/* ── WINS & ALERTS ──────────────────────────────────── */}
         <SectionTitle>🔍 Wins &amp; Alerts</SectionTitle>

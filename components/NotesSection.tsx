@@ -277,7 +277,7 @@ export default function NotesSection({ company }: NotesSectionProps) {
                       {note.date}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-[13px] text-[#C8D5E8] leading-relaxed">{note.action}</p>
+                      <p className="text-[13px] text-[#C8D5E8] leading-relaxed whitespace-pre-line">{note.action}</p>
                       <p className="text-[11px] text-gray-500 mt-0.5">— {note.doneBy}</p>
                     </div>
                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
