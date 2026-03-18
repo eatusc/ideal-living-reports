@@ -14,6 +14,7 @@ export default function HomePage() {
         <div className="mt-6 text-[12px] font-mono space-y-2">
           <Link href="/rpd-walmart" className="block text-blue-400 hover:text-blue-300 transition-colors">/rpd-walmart</Link>
           <Link href="/rpd-hd" className="block text-blue-400 hover:text-blue-300 transition-colors">/rpd-hd</Link>
+          <Link href="/slackdash" className="block text-blue-400 hover:text-blue-300 transition-colors">/slackdash</Link>
         </div>
       </div>
     </main>
