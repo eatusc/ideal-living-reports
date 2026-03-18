@@ -83,11 +83,11 @@ function PinForm() {
           <div className="w-8 h-8 rounded-full bg-[#FFC220] flex items-center justify-center text-[#0A0F1C] font-bold text-lg leading-none select-none">
             ★
           </div>
-          <h1 className="text-xl font-bold text-white tracking-tight">Ideal Living</h1>
+          <h1 className="text-xl font-bold text-slate-900 tracking-tight">Ideal Living</h1>
         </div>
 
-        <div className="bg-dash-card border border-white/[0.08] rounded-xl p-8">
-          <p className="text-[13px] text-gray-400 text-center mb-6">
+        <div className="bg-dash-card border border-white/[0.08] rounded-xl p-8 shadow-[0_24px_60px_rgba(115,145,173,0.18)]">
+          <p className="text-[13px] text-slate-600 text-center mb-6">
             Enter your 4-digit PIN to access reports
           </p>
 
@@ -103,7 +103,7 @@ function PinForm() {
                   value={d}
                   onChange={(e) => handleChange(i, e.target.value)}
                   onKeyDown={(e) => handleKeyDown(i, e)}
-                  className="w-12 h-14 text-center text-xl font-mono font-bold bg-dash-card2 border border-white/[0.12] rounded-lg text-white focus:outline-none focus:border-[#FFC220]/60 focus:bg-[#FFC220]/5 transition-colors caret-transparent"
+                  className="w-12 h-14 text-center text-xl font-mono font-bold bg-dash-card2 border border-white/[0.12] rounded-lg text-slate-900 focus:outline-none focus:border-[#FFC220]/60 focus:bg-[#FFC220]/5 transition-colors caret-transparent"
                   disabled={loading}
                 />
               ))}

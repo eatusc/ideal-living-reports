@@ -5,10 +5,13 @@
 :root {
   --walmart-blue: #0071CE;
   --walmart-yellow: #FFC220;
-  --dark: #0A0F1C;
-  --card: #111827;
-  --card2: #1A2235;
-  --border: rgba(255, 255, 255, 0.08);
+  --dark: #f5efe3;
+  --card: rgba(255, 255, 255, 0.76);
+  --card2: rgba(245, 248, 252, 0.98);
+  --border: rgba(35, 64, 94, 0.12);
+  --text-strong: #16324a;
+  --text-muted: #63788d;
+  --surface-line: rgba(35, 64, 94, 0.1);
 }
 
 * {
@@ -16,10 +19,89 @@
 }
 
 body {
-  background-color: #0A0F1C;
-  color: #E8EDF5;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top left, rgba(255, 194, 32, 0.24), transparent 26%),
+    radial-gradient(circle at top right, rgba(0, 113, 206, 0.16), transparent 22%),
+    linear-gradient(180deg, #fdfaf4 0%, #eef5fb 54%, #f7efe4 100%);
+  color: var(--text-strong);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+a {
+  color: inherit;
+}
+
+.bg-dash-dark {
+  background-color: transparent !important;
+}
+
+.bg-dash-card {
+  background: var(--card) !important;
+  box-shadow: 0 20px 48px rgba(115, 145, 173, 0.15);
+  backdrop-filter: blur(18px);
+}
+
+.bg-dash-card2 {
+  background: var(--card2) !important;
+}
+
+.text-white,
+.text-\[\#E8EDF5\] {
+  color: var(--text-strong) !important;
+}
+
+.text-\[\#C8D5E8\] {
+  color: #4f6578 !important;
+}
+
+.text-orange-200,
+.text-blue-200 {
+  color: #315f84 !important;
+}
+
+.text-gray-300,
+.text-gray-400,
+.text-slate-300,
+.text-slate-400 {
+  color: var(--text-muted) !important;
+}
+
+.text-gray-500,
+.text-gray-600,
+.text-slate-500,
+.text-slate-600 {
+  color: #74879a !important;
+}
+
+[class*='border-white/['],
+[class*='border-white/'] {
+  border-color: var(--surface-line) !important;
+}
+
+[class*='divide-white/['] > :not([hidden]) ~ :not([hidden]) {
+  border-color: rgba(35, 64, 94, 0.08) !important;
+}
+
+[class*='bg-white/[0.02]'],
+[class*='bg-white/[0.01]'] {
+  background-color: rgba(29, 78, 137, 0.035) !important;
+}
+
+.bg-\[\#0D1220\] {
+  background-color: rgba(232, 240, 247, 0.82) !important;
+}
+
+input,
+textarea,
+select {
+  color: var(--text-strong);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #8ea0b0;
 }
 
 /* Scrollable tables on mobile */
@@ -34,9 +116,9 @@ body {
   width: 4px;
 }
 ::-webkit-scrollbar-track {
-  background: #111827;
+  background: rgba(148, 163, 184, 0.18);
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(71, 101, 131, 0.26);
   border-radius: 2px;
 }

@@ -78,29 +78,29 @@ export default async function SlackDashPage() {
       <div className="mx-auto max-w-6xl space-y-6">
         <header className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-white">Slack Task Dashboard</h1>
-            <p className="mt-1 text-sm text-slate-400">
+            <h1 className="text-2xl font-bold text-slate-900">Slack Task Dashboard</h1>
+            <p className="mt-1 text-sm text-slate-600">
               Live view of Slack thread mappings and recent Supabase queue tasks.
             </p>
           </div>
-          <Link href="/" className="text-sm text-sky-300 hover:text-sky-200">
+          <Link href="/" className="text-sm text-sky-700 hover:text-sky-900">
             Back to Home
           </Link>
         </header>
 
-        <section className="rounded-xl border border-white/10 bg-slate-950/60 p-4">
+        <section className="rounded-xl border border-slate-200 bg-white/80 p-4 shadow-[0_18px_45px_rgba(115,145,173,0.14)] backdrop-blur">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-white">Recent Queue Tasks</h2>
-            <span className="text-xs text-slate-400">{data.queueTasks.length} shown</span>
+            <h2 className="text-lg font-semibold text-slate-900">Recent Queue Tasks</h2>
+            <span className="text-xs text-slate-500">{data.queueTasks.length} shown</span>
           </div>
           {data.queueError ? (
             <p className="text-sm text-rose-300">Queue query failed: {data.queueError}</p>
           ) : data.queueTasks.length === 0 ? (
-            <p className="text-sm text-slate-400">No queue rows found.</p>
+            <p className="text-sm text-slate-500">No queue rows found.</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full min-w-[900px] text-left text-sm">
-                <thead className="text-xs uppercase tracking-wide text-slate-400">
+                <thead className="text-xs uppercase tracking-wide text-slate-500">
                   <tr>
                     <th className="pb-2 pr-4">Task ID</th>
                     <th className="pb-2 pr-4">Status</th>
@@ -111,16 +111,16 @@ export default async function SlackDashPage() {
                 </thead>
                 <tbody className="align-top">
                   {data.queueTasks.map((task) => (
-                    <tr key={task.id} className="border-t border-white/5">
-                      <td className="py-2 pr-4 font-mono text-xs text-slate-200">{task.id}</td>
+                    <tr key={task.id} className="border-t border-slate-100">
+                      <td className="py-2 pr-4 font-mono text-xs text-slate-800">{task.id}</td>
                       <td className={`py-2 pr-4 font-medium ${statusTone(task.status)}`}>
                         {task.status ?? 'n/a'}
                       </td>
-                      <td className="py-2 pr-4 font-mono text-xs text-slate-300">
+                      <td className="py-2 pr-4 font-mono text-xs text-slate-600">
                         {task.local_task_id ?? 'n/a'}
                       </td>
-                      <td className="py-2 pr-4 text-slate-300">{formatDateTime(task.updated_at)}</td>
-                      <td className="py-2 text-slate-300">
+                      <td className="py-2 pr-4 text-slate-600">{formatDateTime(task.updated_at)}</td>
+                      <td className="py-2 text-slate-600">
                         {(task.prompt ?? '').slice(0, 140) || 'n/a'}
                       </td>
                     </tr>
@@ -131,19 +131,19 @@ export default async function SlackDashPage() {
           )}
         </section>
 
-        <section className="rounded-xl border border-white/10 bg-slate-950/60 p-4">
+        <section className="rounded-xl border border-slate-200 bg-white/80 p-4 shadow-[0_18px_45px_rgba(115,145,173,0.14)] backdrop-blur">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-white">Slack Thread Mappings</h2>
-            <span className="text-xs text-slate-400">{data.threadRows.length} shown</span>
+            <h2 className="text-lg font-semibold text-slate-900">Slack Thread Mappings</h2>
+            <span className="text-xs text-slate-500">{data.threadRows.length} shown</span>
           </div>
           {data.threadError ? (
             <p className="text-sm text-rose-300">Thread query failed: {data.threadError}</p>
           ) : data.threadRows.length === 0 ? (
-            <p className="text-sm text-slate-400">No thread mappings found.</p>
+            <p className="text-sm text-slate-500">No thread mappings found.</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full min-w-[980px] text-left text-sm">
-                <thead className="text-xs uppercase tracking-wide text-slate-400">
+                <thead className="text-xs uppercase tracking-wide text-slate-500">
                   <tr>
                     <th className="pb-2 pr-4">Supabase Task</th>
                     <th className="pb-2 pr-4">Latest Status</th>
@@ -155,17 +155,17 @@ export default async function SlackDashPage() {
                 </thead>
                 <tbody className="align-top">
                   {data.threadRows.map((row) => (
-                    <tr key={row.supabase_task_id} className="border-t border-white/5">
-                      <td className="py-2 pr-4 font-mono text-xs text-slate-200">
+                    <tr key={row.supabase_task_id} className="border-t border-slate-100">
+                      <td className="py-2 pr-4 font-mono text-xs text-slate-800">
                         {row.supabase_task_id}
                       </td>
                       <td className={`py-2 pr-4 font-medium ${statusTone(row.latest_status)}`}>
                         {row.latest_status ?? 'n/a'}
                       </td>
-                      <td className="py-2 pr-4 font-mono text-xs text-slate-300">{row.channel_id}</td>
-                      <td className="py-2 pr-4 font-mono text-xs text-slate-300">{row.thread_ts}</td>
-                      <td className="py-2 pr-4 text-slate-300">{formatDateTime(row.updated_at)}</td>
-                      <td className="py-2 text-slate-300">{row.blocked_question ?? 'n/a'}</td>
+                      <td className="py-2 pr-4 font-mono text-xs text-slate-600">{row.channel_id}</td>
+                      <td className="py-2 pr-4 font-mono text-xs text-slate-600">{row.thread_ts}</td>
+                      <td className="py-2 pr-4 text-slate-600">{formatDateTime(row.updated_at)}</td>
+                      <td className="py-2 text-slate-600">{row.blocked_question ?? 'n/a'}</td>
                     </tr>
                   ))}
                 </tbody>

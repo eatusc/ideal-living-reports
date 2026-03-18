@@ -85,10 +85,10 @@ function ChartTooltip({
 
   if (showNoteOnly) {
     return (
-      <div className="bg-[#111827] border border-white/[0.12] rounded-lg px-3 py-2.5 shadow-xl text-[11px] max-w-[260px]">
-        <div className="font-semibold text-white mb-1.5">{label}</div>
+      <div className="bg-white/95 border border-slate-200 rounded-lg px-3 py-2.5 shadow-xl text-[11px] max-w-[260px]">
+        <div className="font-semibold text-slate-900 mb-1.5">{label}</div>
         {weekNotes.map((n, i) => (
-          <div key={i} className="text-gray-300 text-[10px] leading-relaxed whitespace-pre-line">
+          <div key={i} className="text-slate-600 text-[10px] leading-relaxed whitespace-pre-line">
             <span className="text-amber-400">{n.date}</span>: {n.text}
           </div>
         ))}
@@ -97,8 +97,8 @@ function ChartTooltip({
   }
 
   return (
-    <div className="bg-[#111827] border border-white/[0.12] rounded-lg px-3 py-2.5 shadow-xl text-[11px] max-w-[260px]">
-      <div className="font-semibold text-white mb-1.5">{label}</div>
+    <div className="bg-white/95 border border-slate-200 rounded-lg px-3 py-2.5 shadow-xl text-[11px] max-w-[260px]">
+      <div className="font-semibold text-slate-900 mb-1.5">{label}</div>
       {payload.map((entry) => {
         const m = metricMap.get(entry.dataKey);
         if (!m || entry.value == null) return null;
@@ -106,17 +106,17 @@ function ChartTooltip({
           <div key={entry.dataKey} className="flex items-center justify-between gap-4 py-0.5">
             <span className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: entry.color }} />
-              <span className="text-gray-400">{m.label}</span>
+              <span className="text-slate-500">{m.label}</span>
             </span>
-            <span className="font-mono text-white">{fmt(m.formatType, entry.value)}</span>
+            <span className="font-mono text-slate-900">{fmt(m.formatType, entry.value)}</span>
           </div>
         );
       })}
       {weekNotes.length > 0 && (
-        <div className="mt-2 pt-2 border-t border-white/[0.08]">
+        <div className="mt-2 pt-2 border-t border-slate-200">
           <div className="text-[10px] font-semibold text-amber-400 uppercase tracking-wide mb-1">Notes</div>
           {weekNotes.map((n, i) => (
-            <div key={i} className="text-gray-400 text-[10px] leading-relaxed whitespace-pre-line">
+            <div key={i} className="text-slate-500 text-[10px] leading-relaxed whitespace-pre-line">
               {n.date}: {n.text}
             </div>
           ))}
@@ -155,7 +155,7 @@ function NoteMarker({
         width={14}
         height={14}
         rx={3}
-        fill="#111827"
+        fill="#ffffff"
         stroke="#F59E0B"
         strokeWidth={1.5}
         style={{ pointerEvents: 'none' }}
@@ -227,8 +227,8 @@ export default function TrendChart({
               onMouseLeave={() => setHoveredMetric(null)}
               className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-[0.5px] border transition-all ${
                 isOn
-                  ? 'border-white/[0.15] text-white'
-                  : 'border-white/[0.06] text-gray-600 hover:text-gray-400'
+                  ? 'border-slate-300 text-slate-900'
+                  : 'border-slate-200 text-slate-500 hover:text-slate-800'
               }`}
               style={isOn || isHovered ? { backgroundColor: `${m.color}15` } : undefined}
             >
@@ -245,13 +245,13 @@ export default function TrendChart({
       {/* Chart */}
       <ResponsiveContainer width="100%" height={height}>
         <ComposedChart data={data} margin={{ top: 16, right: 12, bottom: 4, left: 4 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+          <CartesianGrid strokeDasharray="3 3" stroke="rgba(33, 64, 94, 0.08)" />
 
           <XAxis
             dataKey="label"
-            tick={{ fontSize: 10, fill: '#6B7280' }}
+            tick={{ fontSize: 10, fill: '#64748B' }}
             tickLine={false}
-            axisLine={{ stroke: 'rgba(255,255,255,0.06)' }}
+            axisLine={{ stroke: 'rgba(33, 64, 94, 0.12)' }}
             interval={0}
             angle={-30}
             textAnchor="end"
@@ -262,7 +262,7 @@ export default function TrendChart({
             <YAxis
               yAxisId="dollar"
               orientation="left"
-              tick={{ fontSize: 10, fill: '#6B7280' }}
+              tick={{ fontSize: 10, fill: '#64748B' }}
               tickLine={false}
               axisLine={false}
               tickFormatter={(v: number) => {
@@ -277,7 +277,7 @@ export default function TrendChart({
             <YAxis
               yAxisId="pct"
               orientation="right"
-              tick={{ fontSize: 10, fill: '#6B7280' }}
+              tick={{ fontSize: 10, fill: '#64748B' }}
               tickLine={false}
               axisLine={false}
               tickFormatter={(v: number) => `${v.toFixed(0)}%`}
@@ -291,7 +291,7 @@ export default function TrendChart({
 
           <Tooltip
             content={<ChartTooltip metrics={metrics} notes={notes} hoveredNote={hoveredNote} />}
-            cursor={{ stroke: 'rgba(255,255,255,0.08)' }}
+            cursor={{ stroke: 'rgba(33, 64, 94, 0.12)' }}
           />
 
           {[...noteWeeks.values()].map((note) => (
@@ -317,7 +317,7 @@ export default function TrendChart({
                 strokeWidth={hoveredMetric === m.key ? 3 : 2}
                 strokeOpacity={hoveredMetric && hoveredMetric !== m.key ? 0.2 : 1}
                 dot={{ r: hoveredMetric === m.key ? 4 : 3, fill: m.color, strokeWidth: 0 }}
-                activeDot={{ r: 5, fill: m.color, strokeWidth: 2, stroke: '#111827' }}
+                activeDot={{ r: 5, fill: m.color, strokeWidth: 2, stroke: '#ffffff' }}
                 connectNulls
               />
             ) : null
