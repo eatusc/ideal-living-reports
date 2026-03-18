@@ -13,15 +13,14 @@ function PinForm() {
   const [digits, setDigits] = useState(['', '', '', '']);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const refs = [
-    useRef<HTMLInputElement>(null),
-    useRef<HTMLInputElement>(null),
-    useRef<HTMLInputElement>(null),
-    useRef<HTMLInputElement>(null),
-  ];
+  const ref0 = useRef<HTMLInputElement>(null);
+  const ref1 = useRef<HTMLInputElement>(null);
+  const ref2 = useRef<HTMLInputElement>(null);
+  const ref3 = useRef<HTMLInputElement>(null);
+  const refs = [ref0, ref1, ref2, ref3];
 
   useEffect(() => {
-    refs[0].current?.focus();
+    ref0.current?.focus();
   }, []);
 
   function handleChange(index: number, value: string) {

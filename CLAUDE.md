@@ -11,6 +11,12 @@ A local Next.js multi-client reporting dashboard. Three weekly performance repor
 Access is PIN-gated via middleware + a cookie (PIN in `app/api/auth/route.ts`).
 This app runs **locally only** (`npm run dev`). File uploads write to the local filesystem.
 
+## Webhook Routing Rule
+
+- Public Slack webhooks are handled by `ideal-living-reports` (this codebase).
+- `codex-lab` is not public-facing and should not be used as a Slack webhook target.
+- Keep `codex-lab` as local executor/status poster; keep `/slack/commands`, `/slack/events`, and `/task-status` routing on `ideal-living-reports`.
+
 ## Tech Stack
 
 - Next.js 14 App Router (SSR — no static export)

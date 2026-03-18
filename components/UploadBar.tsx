@@ -8,6 +8,13 @@ interface UploadBarProps {
   company: 'rpd-walmart' | 'elevate' | 'rpd-hd';
 }
 
+interface UploadResponse {
+  summary?: string;
+  sheetsMissing?: string[];
+  weeksFound?: number;
+  error?: string;
+}
+
 export default function UploadBar({ company }: UploadBarProps) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -37,8 +44,7 @@ export default function UploadBar({ company }: UploadBarProps) {
         body: formData,
       });
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      let data: Record<string, any> = {};
+      let data: UploadResponse = {};
       try {
         data = await res.json();
       } catch {
@@ -50,7 +56,7 @@ export default function UploadBar({ company }: UploadBarProps) {
       if (res.ok) {
         const today = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
         const summary = data.summary ?? '';
-        const hasWarning = data.sheetsMissing?.length > 0 || data.weeksFound === 0;
+        const hasWarning = (data.sheetsMissing?.length ?? 0) > 0 || data.weeksFound === 0;
 
         if (hasWarning) {
           setStatus('warning');
