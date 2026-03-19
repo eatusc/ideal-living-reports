@@ -8,6 +8,7 @@ import RpdHdTrendTable from '@/components/RpdHdTrendTable';
 import RetailerTrendTable from '@/components/RetailerTrendTable';
 import TableChartToggle from '@/components/TableChartToggle';
 import TrendChart, { type ChartMetric, type ChartDataPoint, type ChartNote } from '@/components/TrendChart';
+import ImpactView from '@/components/ImpactView';
 import { readNotes, type Note } from '@/lib/notes';
 import Link from 'next/link';
 
@@ -484,6 +485,7 @@ export default async function RpdHdPage() {
               ? <TrendChart data={groupChartData} metrics={groupMetrics} notes={hdChartNotes} accentColor="#F96302" />
               : <div className="text-gray-500 text-sm p-4">No campaign group data available for chart.</div>
           }
+          impactContent={<ImpactView data={groupChartData} metrics={groupMetrics} notes={hdChartNotes} accentColor="#F96302" />}
         />
 
         {/* ── WEEKLY TREND TABLE ─────────────────────────────── */}
@@ -499,6 +501,7 @@ export default async function RpdHdPage() {
             />
           }
           chartContent={<TrendChart data={hdTrendChartData} metrics={hdTrendMetrics} notes={hdChartNotes} accentColor="#F96302" />}
+          impactContent={<ImpactView data={hdTrendChartData} metrics={hdTrendMetrics} notes={hdChartNotes} accentColor="#F96302" />}
         />
 
         {/* ── RETAILER DIRECT SALES ─────────────────────────── */}

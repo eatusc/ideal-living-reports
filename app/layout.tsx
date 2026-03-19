@@ -28,6 +28,23 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={`${dmSans.variable} ${dmMono.variable}`}>
+      <head>
+        {/* Suppress MetaMask extension injection errors */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                var origConsoleError = console.error;
+                console.error = function() {
+                  var msg = arguments[0];
+                  if (typeof msg === 'string' && msg.indexOf('MetaMask') !== -1) return;
+                  return origConsoleError.apply(console, arguments);
+                };
+              })();
+            `,
+          }}
+        />
+      </head>
       <body className="font-sans bg-dash-dark text-slate-900 antialiased">
         {children}
       </body>

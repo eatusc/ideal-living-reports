@@ -7,6 +7,7 @@ import NotesSection from '@/components/NotesSection';
 import { ElevateAmazonTrendTable, ElevateWalmartTrendTable } from '@/components/ElevateTrendTables';
 import TableChartToggle from '@/components/TableChartToggle';
 import TrendChart, { type ChartMetric, type ChartDataPoint, type ChartNote } from '@/components/TrendChart';
+import ImpactView from '@/components/ImpactView';
 import { readNotes, type Note } from '@/lib/notes';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -335,6 +336,7 @@ export default async function ElevatePage() {
           accentColor="#FF9900"
           tableContent={<ElevateAmazonTrendTable weeks={amazon.weeks} />}
           chartContent={<TrendChart data={amazonChartData} metrics={amazonMetrics} notes={amazonChartNotes} accentColor="#FF9900" />}
+          impactContent={<ImpactView data={amazonChartData} metrics={amazonMetrics} notes={amazonChartNotes} accentColor="#FF9900" />}
         />
 
         {/* ══════════════════════════════════════════════════════ */}
@@ -358,6 +360,7 @@ export default async function ElevatePage() {
           accentColor="#0071CE"
           tableContent={<ElevateWalmartTrendTable weeks={walmart.weeks} />}
           chartContent={<TrendChart data={walmartChartData} metrics={walmartMetrics} notes={walmartChartNotes} accentColor="#0071CE" />}
+          impactContent={<ImpactView data={walmartChartData} metrics={walmartMetrics} notes={walmartChartNotes} accentColor="#0071CE" />}
         />
 
         {/* ══════════════════════════════════════════════════════ */}
@@ -419,6 +422,7 @@ export default async function ElevatePage() {
             })() : null
           }
           chartContent={<TrendChart data={semChartData} metrics={semMetrics} accentColor="#A855F7" />}
+          impactContent={<ImpactView data={semChartData} metrics={semMetrics} notes={[]} accentColor="#A855F7" />}
         />
 
         {/* ── WINS & ALERTS ──────────────────────────────────── */}

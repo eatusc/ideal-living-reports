@@ -15,6 +15,7 @@ import NotesSection from '@/components/NotesSection';
 import RpdWalmartTrendTable from '@/components/RpdWalmartTrendTable';
 import TableChartToggle from '@/components/TableChartToggle';
 import TrendChart, { type ChartMetric, type ChartDataPoint, type ChartNote, type FormatType } from '@/components/TrendChart';
+import ImpactView from '@/components/ImpactView';
 import { readNotes, type Note } from '@/lib/notes';
 import Link from 'next/link';
 
@@ -352,6 +353,7 @@ export default async function RpdWalmartPage() {
           accentColor="#FFC220"
           tableContent={<RpdWalmartTrendTable weeks={weeks} />}
           chartContent={<TrendChart data={trendChartData} metrics={trendMetrics} notes={chartNotes} accentColor="#FFC220" />}
+          impactContent={<ImpactView data={trendChartData} metrics={trendMetrics} notes={chartNotes} accentColor="#FFC220" />}
         />
 
         {/* ── BRAND BREAKDOWN TABLE ──────────────────────────── */}
@@ -421,6 +423,7 @@ export default async function RpdWalmartPage() {
               ? <TrendChart data={brandChartData} metrics={brandMetrics} notes={chartNotes} accentColor="#FFC220" />
               : <div className="text-gray-500 text-sm p-4">No brand data available for chart.</div>
           }
+          impactContent={<ImpactView data={brandChartData} metrics={brandMetrics} notes={chartNotes} accentColor="#FFC220" />}
         />
 
         {/* ── SEM CAMPAIGNS ──────────────────────────────────── */}
@@ -485,6 +488,7 @@ export default async function RpdWalmartPage() {
             );
           })()}
           chartContent={<TrendChart data={semChartData} metrics={semMetrics} notes={chartNotes} accentColor="#FFC220" />}
+          impactContent={<ImpactView data={semChartData} metrics={semMetrics} notes={chartNotes} accentColor="#FFC220" />}
         />
 
         {/* ── WINS & ALERTS ──────────────────────────────────── */}
