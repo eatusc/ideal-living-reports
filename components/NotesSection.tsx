@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { withBasePath } from '@/lib/basePath';
 
 interface Note {
@@ -15,6 +15,12 @@ interface NotesSectionProps {
 }
 
 const DEFAULT_DONE_BY = 'admin';
+
+function autoResize(el: HTMLTextAreaElement | null) {
+  if (!el) return;
+  el.style.height = 'auto';
+  el.style.height = el.scrollHeight + 'px';
+}
 
 export default function NotesSection({ company }: NotesSectionProps) {
   const [notes, setNotes] = useState<Note[]>([]);
@@ -185,11 +191,12 @@ export default function NotesSection({ company }: NotesSectionProps) {
           <div className="mb-3">
             <label className="block text-[10px] font-medium uppercase tracking-[0.8px] text-gray-400 mb-1">Action / Note</label>
             <textarea
+              ref={(el) => autoResize(el)}
               value={action}
-              onChange={(e) => setAction(e.target.value)}
+              onChange={(e) => { setAction(e.target.value); autoResize(e.target); }}
               placeholder="Describe the campaign action or note…"
-              rows={2}
-              className="w-full bg-dash-card2 border border-white/[0.1] rounded px-2.5 py-1.5 text-[12px] text-white placeholder-gray-600 resize-none focus:outline-none focus:border-blue-400/50"
+              rows={3}
+              className="w-full bg-dash-card2 border border-white/[0.1] rounded px-2.5 py-1.5 text-[12px] text-white placeholder-gray-600 resize-none focus:outline-none focus:border-blue-400/50 overflow-hidden"
             />
           </div>
           {formError && <p className="text-[11px] text-red-400 mb-2">{formError}</p>}
@@ -232,10 +239,11 @@ export default function NotesSection({ company }: NotesSectionProps) {
                       />
                     </div>
                     <textarea
+                      ref={(el) => autoResize(el)}
                       value={editAction}
-                      onChange={(e) => setEditAction(e.target.value)}
-                      rows={2}
-                      className="w-full bg-dash-card2 border border-white/[0.1] rounded px-2.5 py-1.5 text-[12px] text-white resize-none focus:outline-none focus:border-blue-400/50"
+                      onChange={(e) => { setEditAction(e.target.value); autoResize(e.target); }}
+                      rows={3}
+                      className="w-full bg-dash-card2 border border-white/[0.1] rounded px-2.5 py-1.5 text-[12px] text-white resize-none focus:outline-none focus:border-blue-400/50 overflow-hidden"
                     />
                     {editError && <p className="text-[11px] text-red-400">{editError}</p>}
                     <div className="flex gap-2">
