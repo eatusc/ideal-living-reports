@@ -35,3 +35,5 @@ Format: `YYYY-MM-DD: change; change; change`
 2026-03-27: changed Asana comment image rendering to stacked full-width previews (one per row, 100% container width) for better readability without opening each image.
 2026-03-27: changed Asana image click behavior on `/elevate` to open an in-page fullscreen modal preview (no redirect to Asana), with overlay-close + close button.
 2026-03-27: updated `/elevate` Asana task env resolution to prefer `ASANA_TASK_GID_ELEVATE` (with fallback to `ASANA_TASK_GID`) for multi-task/multi-page configuration.
+2026-03-27: reworked `/somarsh` to a 2026-only weekly dashboard (Elevate-style scorecard/trend/wins-alerts), switched parser to `2026 - Performance Report`, and replaced SoMarsh data file with provided Southern Marsh weekly tracker.
+2026-03-27: improved Google Sheets processing diagnostics by catching session-refresh exceptions in API routes and surfacing non-JSON HTTP failures in `UploadBar` instead of generic `Failed to process Google Sheet`.

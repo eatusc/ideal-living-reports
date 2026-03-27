@@ -16,7 +16,7 @@ export const EXPECTED_SHEETS: Record<string, string[]> = {
   elevate: ['2026 - Amazon Performance Repor', '2026 - Walmart Performance Repo', '2026 SEM Campaigns Data - per d'],
   'rpd-hd': ['ALL - 2026 - Orange Access'],
   lustroware: ['2026 - Performance Report', '2026 - As inidividual SKUs'],
-  somarsh: ['ai-last30-Sponsored_Products_Se'],
+  somarsh: ['2026 - Performance Report'],
 };
 
 const XLSX_CONTENT_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';

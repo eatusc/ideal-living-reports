@@ -23,7 +23,16 @@ export async function POST(
     return NextResponse.json({ error: 'Invalid company' }, { status: 400 });
   }
 
-  const { session, setCookieOnResponse } = await ensureFreshGoogleSession(request);
+  let session: Awaited<ReturnType<typeof ensureFreshGoogleSession>>['session'] = null;
+  let setCookieOnResponse: Awaited<ReturnType<typeof ensureFreshGoogleSession>>['setCookieOnResponse'] = () => undefined;
+  try {
+    const fresh = await ensureFreshGoogleSession(request);
+    session = fresh.session;
+    setCookieOnResponse = fresh.setCookieOnResponse;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Failed to validate Google session';
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
   if (!session) {
     return NextResponse.json({ error: 'Google not connected. Connect Google first.' }, { status: 401 });
   }

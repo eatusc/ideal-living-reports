@@ -224,7 +224,15 @@ export default function UploadBar({ company }: UploadBarProps) {
         body: JSON.stringify({ sheetUrl, confirmAnomalies }),
       });
 
-      const data = (await res.json()) as GoogleProcessResponse;
+      let data: GoogleProcessResponse = {};
+      try {
+        data = (await res.json()) as GoogleProcessResponse;
+      } catch {
+        const raw = await res.text().catch(() => '');
+        setGoogleMessage(`Failed to process Google Sheet (HTTP ${res.status})${raw ? `: ${raw.slice(0, 180)}` : ''}`);
+        stopProgress(0);
+        return;
+      }
       if (res.status === 409 && data.requiresConfirmation) {
         setPendingAnomalies({
           title: data.spreadsheetTitle ?? '(untitled)',

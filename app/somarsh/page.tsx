@@ -9,19 +9,29 @@ import ImpactView from '@/components/ImpactView';
 import SortableTable from '@/components/SortableTable';
 import { parseSomarshData } from '@/lib/parseSomarsh';
 import { readNotes, type Note } from '@/lib/notes';
-import { fmtDollar, fmtPct, fmtRoas } from '@/lib/parseExcel';
-
-const SOMARSH_ACOS_TARGET = 0.10;
-const SOMARSH_ACOS_GOOD = 0.08; // well below target
-const SOMARSH_ACOS_BAD = 0.12; // well above target
+import { wowPct, fmtDollar, fmtPct, fmtRoas } from '@/lib/parseExcel';
 
 function formatNumber(n: number): string {
   return Math.round(n).toLocaleString('en-US');
 }
 
-function fmtMoney2(n: number | null): string {
-  if (n === null || !isFinite(n)) return '—';
-  return `$${n.toFixed(2)}`;
+function wowArrow(pct: number | null, invertGood = false) {
+  if (pct === null) return { symbol: '—', label: 'N/A', cls: 'text-gray-500' };
+  const up = pct >= 0;
+  const good = invertGood ? !up : up;
+  return {
+    symbol: up ? '↑' : '↓',
+    label: `${up ? '+' : ''}${(pct * 100).toFixed(1)}%`,
+    cls: good ? 'text-green-400' : 'text-red-400',
+  };
+}
+
+function acosWowArrow(current: number | null, prev: number | null) {
+  if (current === null || prev === null) return { symbol: '—', label: '—', cls: 'text-gray-500' };
+  const delta = current - prev;
+  const pctChange = prev !== 0 ? delta / prev : null;
+  const label = pctChange !== null ? `${delta >= 0 ? '+' : ''}${(pctChange * 100).toFixed(1)}%` : '—';
+  return { symbol: delta >= 0 ? '↑' : '↓', label, cls: delta <= 0 ? 'text-green-400' : 'text-amber-400' };
 }
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
@@ -35,11 +45,12 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 interface ScoreCardProps {
   label: string;
   value: string;
-  sub?: string;
+  prevLabel: string;
+  wow: { symbol: string; label: string; cls: string };
   topColor?: string;
 }
 
-function ScoreCard({ label, value, sub, topColor }: ScoreCardProps) {
+function ScoreCard({ label, value, prevLabel, wow, topColor }: ScoreCardProps) {
   return (
     <div
       className="relative bg-dash-card border border-white/[0.08] rounded-lg p-4 overflow-hidden"
@@ -47,60 +58,56 @@ function ScoreCard({ label, value, sub, topColor }: ScoreCardProps) {
     >
       <div className="text-[10px] font-medium uppercase tracking-[0.8px] text-gray-400 mb-2">{label}</div>
       <div className="font-mono text-[22px] font-bold text-white tracking-tight leading-none">{value}</div>
-      {sub && <div className="font-mono text-[10px] mt-1.5 text-gray-500">{sub}</div>}
+      <div className={`font-mono text-[11px] mt-1.5 flex items-center gap-1 ${wow.cls}`}>
+        <span>{wow.symbol}</span><span>{wow.label} WoW</span>
+      </div>
+      <div className="font-mono text-[10px] mt-0.5 text-gray-500">{prevLabel}</div>
     </div>
   );
 }
 
-function sumBy<T>(items: T[], pick: (item: T) => number): number {
-  return items.reduce((acc, item) => acc + pick(item), 0);
-}
-
-function generate3DayWinsWatch(daily: Array<{ spend: number; sales: number; orders: number; clicks: number; impressions: number }>) {
+function generateWinsAlerts(curr: {
+  sales: number;
+  adSpend: number;
+  adSales: number;
+  acos: number | null;
+  roas: number | null;
+}, prev: {
+  sales: number;
+  adSpend: number;
+  adSales: number;
+  acos: number | null;
+  roas: number | null;
+}) {
   const wins: string[] = [];
-  const watch: string[] = [];
+  const alerts: string[] = [];
+  const salesWow = wowPct(curr.sales, prev.sales);
+  const spendWow = wowPct(curr.adSpend, prev.adSpend);
+  const adSalesWow = wowPct(curr.adSales, prev.adSales);
 
-  if (daily.length < 3) return { wins, watch };
+  if (salesWow !== null && salesWow > 0.15) {
+    wins.push(`Total sales up ${(salesWow * 100).toFixed(0)}% WoW (${fmtDollar(prev.sales)} → ${fmtDollar(curr.sales)}).`);
+  }
+  if (curr.acos !== null && curr.acos > 0 && curr.acos < 0.20) {
+    wins.push(`Efficient ACoS at ${(curr.acos * 100).toFixed(1)}% with ROAS ${fmtRoas(curr.roas)}.`);
+  }
+  if (adSalesWow !== null && adSalesWow > 0.12 && spendWow !== null && spendWow < 0.12) {
+    wins.push(`Ad sales grew ${(adSalesWow * 100).toFixed(0)}% with controlled ad spend.`);
+  }
 
-  const last3 = daily.slice(-3);
-  const prev3 = daily.slice(Math.max(0, daily.length - 6), daily.length - 3);
+  if (curr.acos !== null && curr.acos > 0.35) {
+    alerts.push(`ACoS at ${(curr.acos * 100).toFixed(1)}% — review spend concentration and bids.`);
+  }
+  if (salesWow !== null && salesWow < -0.15) {
+    alerts.push(`Sales down ${Math.abs(salesWow * 100).toFixed(0)}% WoW (${fmtDollar(prev.sales)} → ${fmtDollar(curr.sales)}).`);
+  }
+  if (curr.adSpend > 0 && curr.adSales === 0) {
+    alerts.push(`${fmtDollar(curr.adSpend)} ad spend with $0 ad sales — investigate campaigns.`);
+  }
 
-  const last = {
-    spend: sumBy(last3, (d) => d.spend),
-    sales: sumBy(last3, (d) => d.sales),
-    orders: sumBy(last3, (d) => d.orders),
-    clicks: sumBy(last3, (d) => d.clicks),
-    impressions: sumBy(last3, (d) => d.impressions),
-  };
-  const prev = {
-    spend: sumBy(prev3, (d) => d.spend),
-    sales: sumBy(prev3, (d) => d.sales),
-    orders: sumBy(prev3, (d) => d.orders),
-    clicks: sumBy(prev3, (d) => d.clicks),
-    impressions: sumBy(prev3, (d) => d.impressions),
-  };
-
-  const salesDelta = prev.sales > 0 ? (last.sales - prev.sales) / prev.sales : 0;
-  const spendDelta = prev.spend > 0 ? (last.spend - prev.spend) / prev.spend : 0;
-  const lastAcos = last.sales > 0 ? last.spend / last.sales : null;
-  const prevAcos = prev.sales > 0 ? prev.spend / prev.sales : null;
-  const ctrLast = last.impressions > 0 ? last.clicks / last.impressions : null;
-  const ctrPrev = prev.impressions > 0 ? prev.clicks / prev.impressions : null;
-
-  if (salesDelta > 0.15) wins.push(`3-day sales are up ${fmtPct(salesDelta)} vs prior 3 days (${fmtDollar(prev.sales)} → ${fmtDollar(last.sales)}).`);
-  if (lastAcos !== null && lastAcos <= SOMARSH_ACOS_GOOD) wins.push(`ACoS is well below target at ${fmtPct(lastAcos)} (target: ${fmtPct(SOMARSH_ACOS_TARGET)}).`);
-  if (lastAcos !== null && prevAcos !== null && lastAcos < prevAcos) wins.push(`Efficiency improved: ACoS moved from ${fmtPct(prevAcos)} to ${fmtPct(lastAcos)} over the latest 3 days.`);
-  if (ctrLast !== null && ctrPrev !== null && ctrLast > ctrPrev) wins.push(`CTR improved from ${fmtPct(ctrPrev)} to ${fmtPct(ctrLast)} over the latest 3 days.`);
-
-  if (salesDelta < -0.12) watch.push(`3-day sales are down ${fmtPct(Math.abs(salesDelta))} vs prior 3 days (${fmtDollar(prev.sales)} → ${fmtDollar(last.sales)}).`);
-  if (lastAcos !== null && lastAcos >= SOMARSH_ACOS_BAD) watch.push(`ACoS is above target at ${fmtPct(lastAcos)} (target: ${fmtPct(SOMARSH_ACOS_TARGET)}); tighten term/campaign spend.`);
-  if (lastAcos !== null && prevAcos !== null && lastAcos > prevAcos * 1.1) watch.push(`ACoS worsened from ${fmtPct(prevAcos)} to ${fmtPct(lastAcos)}; review recent high-spend terms.`);
-  if (spendDelta > 0.15 && salesDelta < 0.05) watch.push(`Spend increased ${fmtPct(spendDelta)} with weak sales lift; trim low-conversion search terms.`);
-
-  if (wins.length === 0) wins.push('No strong positive shift in the latest 3-day window; performance is relatively flat.');
-  if (watch.length === 0) watch.push('No major 3-day risk spike detected. Continue monitoring wasted-spend terms.');
-
-  return { wins: wins.slice(0, 4), watch: watch.slice(0, 4) };
+  if (wins.length === 0) wins.push('No major upside signal detected this week.');
+  if (alerts.length === 0) alerts.push('No major risk signal detected this week.');
+  return { wins: wins.slice(0, 4), alerts: alerts.slice(0, 4) };
 }
 
 export default async function SoMarshPage() {
@@ -132,76 +139,47 @@ export default async function SoMarshPage() {
     );
   }
 
-  const trendMetrics: ChartMetric[] = [
-    { key: 'spend', label: 'Spend', color: '#EF4444', yAxisId: 'dollar', formatType: 'dollar', defaultVisible: true },
-    { key: 'sales', label: 'Sales', color: '#22C55E', yAxisId: 'dollar', formatType: 'dollar', defaultVisible: true },
-    { key: 'orders', label: 'Orders', color: '#3B82F6', yAxisId: 'count', formatType: 'number', defaultVisible: false },
-    { key: 'clicks', label: 'Clicks', color: '#06B6D4', yAxisId: 'count', formatType: 'number', defaultVisible: false },
+  const { weeks, currentWeek: curr, previousWeek: prev } = data;
+  const { wins, alerts } = generateWinsAlerts(curr, prev);
+
+  const chartMetrics: ChartMetric[] = [
+    { key: 'sales', label: 'Total Sales', color: '#22C55E', yAxisId: 'dollar', formatType: 'dollar', defaultVisible: true },
+    { key: 'adSpend', label: 'Ad Spend', color: '#EF4444', yAxisId: 'dollar', formatType: 'dollar', defaultVisible: true },
+    { key: 'adSales', label: 'Ad Sales', color: '#3B82F6', yAxisId: 'dollar', formatType: 'dollar', defaultVisible: true },
+    { key: 'organicSales', label: 'Organic Sales', color: '#A855F7', yAxisId: 'dollar', formatType: 'dollar', defaultVisible: false },
+    { key: 'units', label: 'Units', color: '#06B6D4', yAxisId: 'count', formatType: 'number', defaultVisible: false },
+    { key: 'orders', label: 'Orders', color: '#EC4899', yAxisId: 'count', formatType: 'number', defaultVisible: false },
     { key: 'acos', label: 'ACoS', color: '#F59E0B', yAxisId: 'pct', formatType: 'pct', defaultVisible: true },
+    { key: 'roas', label: 'ROAS', color: '#8B5CF6', yAxisId: 'pct', formatType: 'roas', defaultVisible: true },
   ];
 
-  const trendData: ChartDataPoint[] = data.daily.map((d) => ({
-    label: d.label,
-    spend: d.spend,
-    sales: d.sales,
-    orders: d.orders,
-    clicks: d.clicks,
-    acos: d.sales > 0 ? (d.spend / d.sales) * 100 : null,
+  const chartData: ChartDataPoint[] = weeks.map((w) => ({
+    label: w.startDate ? `${w.startDate}` : w.label,
+    sales: w.sales,
+    adSpend: w.adSpend,
+    adSales: w.adSales,
+    organicSales: w.organicSales,
+    units: w.units,
+    orders: w.orders,
+    acos: w.acos !== null ? w.acos * 100 : null,
+    roas: w.roas,
   }));
 
   const chartNotes: ChartNote[] = notes.flatMap((n) => {
     const noteDate = new Date(n.date);
     if (isNaN(noteDate.getTime())) return [];
-    const label = noteDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    return [{ date: n.date, text: n.action, weekLabel: label }];
+    for (const w of weeks) {
+      if (!w.startDate || !w.endDate) continue;
+      const year = new Date().getFullYear();
+      const start = new Date(`${w.startDate}, ${year}`);
+      const end = new Date(`${w.endDate}, ${year}`);
+      end.setHours(23, 59, 59);
+      if (noteDate >= start && noteDate <= end) {
+        return [{ date: n.date, text: n.action, weekLabel: w.startDate }];
+      }
+    }
+    return [];
   });
-  const peakNotes: ChartNote[] = data.peakInsights.map((p) => ({
-    date: p.noteDate,
-    text: p.text,
-    weekLabel: p.label,
-  }));
-  const peakInsightByLabel = new Map(data.peakInsights.map((p) => [p.label, p.text]));
-  const combinedNotes: ChartNote[] = [...peakNotes, ...chartNotes];
-  const { wins, watch } = generate3DayWinsWatch(data.daily);
-  const dailyRows = data.daily.map((d) => ({
-    row_key: d.label,
-    date: d.label,
-    spend: d.spend,
-    sales: d.sales,
-    orders: d.orders,
-    clicks: d.clicks,
-    acos: d.sales > 0 ? d.spend / d.sales : null,
-    peak_reason: peakInsightByLabel.get(d.label) ?? '',
-  }));
-  const topSpendRows = data.topTermsBySpend.map((t, i) => ({
-    row_key: `${t.term}-${i}`,
-    term: t.term,
-    spend: t.spend,
-    sales: t.sales,
-    clicks: t.clicks,
-    orders: t.orders,
-    acos: t.acos,
-  }));
-  const campaignRows = data.campaigns.map((c, i) => ({
-    row_key: `${c.campaign}-${i}`,
-    campaign: c.campaign,
-    spend: c.spend,
-    sales: c.sales,
-    orders: c.orders,
-    clicks: c.clicks,
-    ctr: c.ctr,
-    cpc: c.cpc,
-    acos: c.acos,
-    roas: c.roas,
-  }));
-  const wastedRows = data.wastedSpendTerms.map((t, i) => ({
-    row_key: `${t.term}-${i}`,
-    term: t.term,
-    spend: t.spend,
-    clicks: t.clicks,
-    impressions: t.impressions,
-    cpc: t.cpc,
-  }));
 
   return (
     <main className="report-redesign min-h-screen bg-slate-50 px-4 sm:px-6 py-10">
@@ -223,62 +201,76 @@ export default async function SoMarshPage() {
           <div>
             <div className="flex items-center gap-2.5 mb-1.5">
               <div className="w-8 h-8 rounded-full bg-[#FFC220] flex items-center justify-center text-[#0A0F1C] font-bold text-lg leading-none select-none">★</div>
-              <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">SoMarsh</h1>
+              <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">Southern Marsh</h1>
             </div>
-            <p className="text-sm text-gray-400">Sponsored Products Search Term Report</p>
+            <p className="text-sm text-gray-400">Weekly Organic + Ad Sales Performance Report (2026)</p>
             <div className="inline-flex items-center gap-1.5 mt-2 bg-[#0071CE]/10 border border-[#0071CE]/30 text-blue-400 px-2.5 py-1 rounded text-[11px] font-mono">
-              30 Day Data · {data.windowStart} - {data.windowEnd}
-            </div>
-            <div className="inline-flex items-center gap-1.5 mt-2 ml-2 bg-amber-500/10 border border-amber-400/30 text-amber-300 px-2.5 py-1 rounded text-[11px] font-mono">
-              ACoS Target: 10% (SoMarsh)
+              ⚡ Source: Weekly Organic and Ad Sales Tracker
             </div>
           </div>
           <div className="text-right font-mono text-[12px] text-gray-400">
-            <div className="text-[14px] font-semibold text-[#E8EDF5] mb-0.5">30-Day Snapshot</div>
+            <div className="text-[14px] font-semibold text-[#E8EDF5] mb-0.5">Current Week Report</div>
             <div>Generated: {today}</div>
-            <div>Amazon US · Search Terms</div>
+            <div>Sales + Ads</div>
           </div>
         </header>
 
-        <SectionTitle>📊 30-Day Performance Summary</SectionTitle>
+        <SectionTitle>📊 Weekly Scorecard — Current vs. Previous Week</SectionTitle>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 mb-2">
-          <ScoreCard label="Spend" value={fmtDollar(data.totals.spend)} topColor="#EF4444" />
-          <ScoreCard label="Sales" value={fmtDollar(data.totals.sales)} topColor="#22C55E" />
-          <ScoreCard label="Orders" value={formatNumber(data.totals.orders)} topColor="#3B82F6" />
-          <ScoreCard label="Units" value={formatNumber(data.totals.units)} topColor="#06B6D4" />
-          <ScoreCard label="Impressions" value={formatNumber(data.totals.impressions)} topColor="#A855F7" />
-          <ScoreCard label="Clicks" value={formatNumber(data.totals.clicks)} topColor="#0EA5E9" />
-          <ScoreCard label="CTR" value={fmtPct(data.totals.ctr)} topColor="#22C55E" />
-          <ScoreCard label="CPC" value={fmtMoney2(data.totals.cpc)} topColor="#F97316" />
-          <ScoreCard label="CVR" value={fmtPct(data.totals.cvr)} topColor="#14B8A6" />
-          <ScoreCard label="ACoS" value={fmtPct(data.totals.acos)} topColor="#F59E0B" />
-          <ScoreCard label="ROAS" value={fmtRoas(data.totals.roas)} topColor="#8B5CF6" />
+          <ScoreCard label="Total Sales" value={fmtDollar(curr.sales)} prevLabel={`Prev: ${fmtDollar(prev.sales)}`} wow={wowArrow(wowPct(curr.sales, prev.sales))} topColor="#22C55E" />
+          <ScoreCard label="Units Sold" value={formatNumber(curr.units)} prevLabel={`Prev: ${formatNumber(prev.units)}`} wow={wowArrow(wowPct(curr.units, prev.units))} topColor="#06B6D4" />
+          <ScoreCard label="Orders" value={formatNumber(curr.orders)} prevLabel={`Prev: ${formatNumber(prev.orders)}`} wow={wowArrow(wowPct(curr.orders, prev.orders))} topColor="#EC4899" />
+          <ScoreCard label="Sessions" value={formatNumber(curr.sessions)} prevLabel={`Prev: ${formatNumber(prev.sessions)}`} wow={wowArrow(wowPct(curr.sessions, prev.sessions))} topColor="#0EA5E9" />
+          <ScoreCard label="Ad Spend" value={fmtDollar(curr.adSpend)} prevLabel={`Prev: ${fmtDollar(prev.adSpend)}`} wow={wowArrow(wowPct(curr.adSpend, prev.adSpend), true)} topColor="#EF4444" />
+          <ScoreCard label="Ad Sales" value={fmtDollar(curr.adSales)} prevLabel={`Prev: ${fmtDollar(prev.adSales)}`} wow={wowArrow(wowPct(curr.adSales, prev.adSales))} topColor="#3B82F6" />
+          <ScoreCard label="ACoS" value={fmtPct(curr.acos)} prevLabel={`Prev: ${fmtPct(prev.acos)}`} wow={acosWowArrow(curr.acos, prev.acos)} topColor="#F59E0B" />
+          <ScoreCard label="ROAS" value={fmtRoas(curr.roas)} prevLabel={`Prev: ${fmtRoas(prev.roas)}`} wow={wowArrow(wowPct(curr.roas ?? 0, prev.roas ?? 0))} topColor="#8B5CF6" />
+          <ScoreCard label="Organic Sales" value={fmtDollar(curr.organicSales)} prevLabel={`Prev: ${fmtDollar(prev.organicSales)}`} wow={wowArrow(wowPct(curr.organicSales, prev.organicSales))} topColor="#22C55E" />
+          <ScoreCard label="Impressions" value={formatNumber(curr.impressions)} prevLabel={`Prev: ${formatNumber(prev.impressions)}`} wow={wowArrow(wowPct(curr.impressions, prev.impressions))} topColor="#A855F7" />
+          <ScoreCard label="Conv. Rate" value={fmtPct(curr.conversionRate)} prevLabel={`Prev: ${fmtPct(prev.conversionRate)}`} wow={wowArrow(wowPct(curr.conversionRate ?? 0, prev.conversionRate ?? 0))} topColor="#14B8A6" />
+          <ScoreCard label="Ad Revenue %" value={fmtPct(curr.adRevenueShare)} prevLabel={`Prev: ${fmtPct(prev.adRevenueShare)}`} wow={wowArrow(wowPct(curr.adRevenueShare ?? 0, prev.adRevenueShare ?? 0))} topColor="#F97316" />
         </div>
 
-        <SectionTitle>📈 Daily Trend (30 Days)</SectionTitle>
+        <SectionTitle>📈 Weekly Trend (2026)</SectionTitle>
         <TableChartToggle
           tableContent={
-            <div className="bg-dash-card border border-white/[0.08] rounded-lg overflow-visible">
+            <div className="bg-dash-card border border-white/[0.08] rounded-lg overflow-hidden">
               <SortableTable
-                rowKey="row_key"
-                rows={dailyRows}
                 columns={[
-                  { key: 'date', label: 'Date', align: 'left', type: 'text' },
-                  { key: 'spend', label: 'Spend', align: 'right', type: 'currency' },
+                  { key: 'week', label: 'Week' },
                   { key: 'sales', label: 'Sales', align: 'right', type: 'currency' },
+                  { key: 'units', label: 'Units', align: 'right', type: 'number' },
                   { key: 'orders', label: 'Orders', align: 'right', type: 'number' },
-                  { key: 'clicks', label: 'Clicks', align: 'right', type: 'number' },
+                  { key: 'sessions', label: 'Sessions', align: 'right', type: 'number' },
+                  { key: 'adSpend', label: 'Ad Spend', align: 'right', type: 'currency' },
+                  { key: 'adSales', label: 'Ad Sales', align: 'right', type: 'currency' },
+                  { key: 'organicSales', label: 'Organic Sales', align: 'right', type: 'currency' },
                   { key: 'acos', label: 'ACoS', align: 'right', type: 'percent' },
-                  { key: 'peak_reason', label: 'Peak Reason', align: 'left', type: 'peak_reason' },
+                  { key: 'roas', label: 'ROAS', align: 'right', type: 'roas' },
                 ]}
+                rows={weeks.map((w) => ({
+                  week: w.label === 'Current Week' && w.startDate && w.endDate ? `${w.label} (${w.startDate} - ${w.endDate})` : w.label,
+                  sales: w.sales,
+                  units: w.units,
+                  orders: w.orders,
+                  sessions: w.sessions,
+                  adSpend: w.adSpend,
+                  adSales: w.adSales,
+                  organicSales: w.organicSales,
+                  acos: w.acos,
+                  roas: w.roas,
+                }))}
+                rowKey="week"
+                defaultSortKey="week"
+                defaultSortDir="asc"
               />
             </div>
           }
-          chartContent={<TrendChart data={trendData} metrics={trendMetrics} notes={combinedNotes} accentColor="#FFC220" />}
-          impactContent={<ImpactView data={trendData} metrics={trendMetrics} notes={combinedNotes} accentColor="#FFC220" />}
+          chartContent={<TrendChart data={chartData} metrics={chartMetrics} notes={chartNotes} accentColor="#FFC220" />}
+          impactContent={<ImpactView data={chartData} metrics={chartMetrics} notes={chartNotes} accentColor="#FFC220" />}
         />
 
-        <SectionTitle>🟢 Wins / 🔴 Watch (Latest 3 Days)</SectionTitle>
+        <SectionTitle>🔍 Wins &amp; Alerts</SectionTitle>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
           <div className="bg-dash-card border border-white/[0.08] border-l-[3px] border-l-green-400 rounded-lg p-5">
             <div className="text-[11px] font-bold uppercase tracking-[0.8px] text-green-400 mb-4">🟢 Wins</div>
@@ -294,7 +286,7 @@ export default async function SoMarshPage() {
           <div className="bg-dash-card border border-white/[0.08] border-l-[3px] border-l-red-500 rounded-lg p-5">
             <div className="text-[11px] font-bold uppercase tracking-[0.8px] text-red-400 mb-4">🔴 Watch</div>
             <ul className="space-y-3">
-              {watch.map((w, i) => (
+              {alerts.map((w, i) => (
                 <li key={i} className="flex gap-2.5 text-[13px] leading-relaxed">
                   <div className="mt-1.5 w-1.5 h-1.5 rounded-full bg-red-400 flex-shrink-0" />
                   <span className="text-[#C8D5E8]">{w}</span>
@@ -304,101 +296,11 @@ export default async function SoMarshPage() {
           </div>
         </div>
 
-        <SectionTitle>🔎 Top Search Terms By Spend</SectionTitle>
-        <div className="bg-dash-card border border-white/[0.08] rounded-lg overflow-hidden mb-6">
-          <SortableTable
-            rowKey="row_key"
-            rows={topSpendRows}
-            columns={[
-              { key: 'term', label: 'Search Term', align: 'left', type: 'text' },
-              { key: 'spend', label: 'Spend', align: 'right', type: 'currency' },
-              { key: 'sales', label: 'Sales', align: 'right', type: 'currency' },
-              { key: 'clicks', label: 'Clicks', align: 'right', type: 'number' },
-              { key: 'orders', label: 'Orders', align: 'right', type: 'number' },
-              { key: 'acos', label: 'ACoS', align: 'right', type: 'percent' },
-            ]}
-            maxRows={25}
-          />
-        </div>
-
-        <SectionTitle>🎯 Campaign Performance (30 Days)</SectionTitle>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-          <div className="bg-dash-card border border-white/[0.08] border-l-[3px] border-l-green-400 rounded-lg p-5">
-            <div className="text-[11px] font-bold uppercase tracking-[0.8px] text-green-400 mb-4">🟢 Strong Campaigns</div>
-            {data.winningCampaigns.length === 0 ? (
-              <p className="text-[13px] text-gray-500">No campaign currently meets the strong-performance threshold.</p>
-            ) : (
-              <ul className="space-y-3">
-                {data.winningCampaigns.slice(0, 6).map((c) => (
-                  <li key={`win-${c.campaign}`} className="flex gap-2.5 text-[13px] leading-relaxed">
-                    <div className="mt-1.5 w-1.5 h-1.5 rounded-full bg-green-400 flex-shrink-0" />
-                    <span className="text-[#C8D5E8]">
-                      <strong className="text-white">{c.campaign}</strong> · ROAS {fmtRoas(c.roas)} · ACoS {fmtPct(c.acos)} · Sales {fmtDollar(c.sales)}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-          <div className="bg-dash-card border border-white/[0.08] border-l-[3px] border-l-red-500 rounded-lg p-5">
-            <div className="text-[11px] font-bold uppercase tracking-[0.8px] text-red-400 mb-4">🔴 Review Campaigns</div>
-            {data.watchCampaigns.length === 0 ? (
-              <p className="text-[13px] text-gray-500">No high-risk campaign currently exceeds the review threshold.</p>
-            ) : (
-              <ul className="space-y-3">
-                {data.watchCampaigns.slice(0, 6).map((c) => (
-                  <li key={`watch-${c.campaign}`} className="flex gap-2.5 text-[13px] leading-relaxed">
-                    <div className="mt-1.5 w-1.5 h-1.5 rounded-full bg-red-400 flex-shrink-0" />
-                    <span className="text-[#C8D5E8]">
-                      <strong className="text-white">{c.campaign}</strong> · ROAS {fmtRoas(c.roas)} · ACoS {fmtPct(c.acos)} · Spend {fmtDollar(c.spend)}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        </div>
-
-        <div className="bg-dash-card border border-white/[0.08] rounded-lg overflow-hidden mb-6">
-          <SortableTable
-            rowKey="row_key"
-            rows={campaignRows}
-            columns={[
-              { key: 'campaign', label: 'Campaign', align: 'left', type: 'text' },
-              { key: 'spend', label: 'Spend', align: 'right', type: 'currency' },
-              { key: 'sales', label: 'Sales', align: 'right', type: 'currency' },
-              { key: 'orders', label: 'Orders', align: 'right', type: 'number' },
-              { key: 'clicks', label: 'Clicks', align: 'right', type: 'number' },
-              { key: 'ctr', label: 'CTR', align: 'right', type: 'percent' },
-              { key: 'cpc', label: 'CPC', align: 'right', type: 'currency' },
-              { key: 'acos', label: 'ACoS', align: 'right', type: 'percent' },
-              { key: 'roas', label: 'ROAS', align: 'right', type: 'roas' },
-            ]}
-            maxRows={35}
-          />
-        </div>
-
-        <SectionTitle>💰 Wasted Spend Terms (No Sales)</SectionTitle>
-        <div className="bg-dash-card border border-white/[0.08] rounded-lg overflow-hidden mb-6">
-          <SortableTable
-            rowKey="row_key"
-            rows={wastedRows}
-            columns={[
-              { key: 'term', label: 'Search Term', align: 'left', type: 'text' },
-              { key: 'spend', label: 'Spend', align: 'right', type: 'currency' },
-              { key: 'clicks', label: 'Clicks', align: 'right', type: 'number' },
-              { key: 'impressions', label: 'Impressions', align: 'right', type: 'number' },
-              { key: 'cpc', label: 'CPC', align: 'right', type: 'currency' },
-            ]}
-            maxRows={25}
-          />
-        </div>
-
         <NotesSection company="somarsh" initialNotes={notes} />
 
         <footer className="mt-12 pt-5 border-t border-white/[0.08] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 font-mono text-[11px] text-gray-500">
-          <span>SoMarsh · Search Term Dashboard · 30 Day Data</span>
-          <span>Source: Sponsored Products Search Term Report</span>
+          <span>Southern Marsh · Weekly Report (2026) · Generated {today}</span>
+          <span>Source: Weekly Organic and Ad Sales Tracker</span>
         </footer>
       </div>
     </main>
