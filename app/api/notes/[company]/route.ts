@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { readNotes, appendNote, updateNote, deleteNote, isValidCompany } from '@/lib/notes';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function GET(
   _request: NextRequest,
   { params }: { params: { company: string } }
@@ -10,7 +13,9 @@ export async function GET(
     return NextResponse.json({ error: 'Invalid company' }, { status: 400 });
   }
   const notes = await readNotes(company);
-  return NextResponse.json(notes);
+  return NextResponse.json(notes, {
+    headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate' },
+  });
 }
 
 export async function POST(

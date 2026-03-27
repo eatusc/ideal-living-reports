@@ -7,6 +7,8 @@ const COMPANY_DIRS: Record<string, string> = {
   'rpd-walmart': 'rpd',
   'elevate':     'elevate',
   'rpd-hd':      'rpd-hd',
+  'lustroware':  'lustroware',
+  'somarsh':     'somarsh',
 };
 
 /**

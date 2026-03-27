@@ -2,6 +2,7 @@
 
 import { Fragment, useState } from 'react';
 import { fmtDollar } from '@/lib/formatUtils';
+import SortableTable from '@/components/SortableTable';
 
 function formatNumber(n: number): string {
   return Math.round(n).toLocaleString('en-US');
@@ -39,8 +40,44 @@ export default function RetailerTrendTable({
   allLabels: string[];
 }) {
   const [expandedWeek, setExpandedWeek] = useState<string | null>(null);
+  const [sortKey, setSortKey] = useState<string>('order');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
 
   const colCount = 2 + retailers.length; // Week + retailers + Combined
+  const weekRows = allLabels.map((label, index) => {
+    const weeksByRetailer = retailers.map((r) => r.weeks.find((w) => w.label === label));
+    const combined = weeksByRetailer.reduce((sum, w) => sum + (w?.sales ?? 0), 0);
+    const perRetailer = retailers.reduce<Record<string, number>>((acc, r, i) => {
+      acc[r.key] = weeksByRetailer[i]?.sales ?? 0;
+      return acc;
+    }, {});
+    return { label, order: index, weeksByRetailer, combined, perRetailer };
+  });
+
+  const sortedRows = [...weekRows].sort((a, b) => {
+    const av =
+      sortKey === 'label' ? a.label :
+      sortKey === 'combined' ? a.combined :
+      sortKey === 'order' ? a.order :
+      a.perRetailer[sortKey] ?? 0;
+    const bv =
+      sortKey === 'label' ? b.label :
+      sortKey === 'combined' ? b.combined :
+      sortKey === 'order' ? b.order :
+      b.perRetailer[sortKey] ?? 0;
+    if (typeof av === 'number' && typeof bv === 'number') return sortDir === 'asc' ? av - bv : bv - av;
+    const cmp = String(av).localeCompare(String(bv), undefined, { numeric: true, sensitivity: 'base' });
+    return sortDir === 'asc' ? cmp : -cmp;
+  });
+
+  function onSort(nextKey: string) {
+    if (sortKey === nextKey) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+      return;
+    }
+    setSortKey(nextKey);
+    setSortDir(nextKey === 'order' || nextKey === 'label' ? 'asc' : 'desc');
+  }
 
   return (
     <div className="bg-dash-card border border-white/[0.08] rounded-lg overflow-hidden mb-6">
@@ -51,19 +88,30 @@ export default function RetailerTrendTable({
         <table className="w-full border-collapse text-[12px]">
           <thead>
             <tr className="bg-dash-card2 border-b border-white/[0.08]">
-              <th className="text-left px-3.5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.8px] text-gray-400 whitespace-nowrap">Week</th>
+              <th className="text-left px-3.5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.8px] text-gray-400 whitespace-nowrap">
+                <button type="button" onClick={() => onSort('label')} className="inline-flex items-center gap-1 hover:text-gray-200 transition-colors">
+                  Week
+                  <span className="text-[10px]">{sortKey === 'label' ? (sortDir === 'asc' ? '↑' : '↓') : '↕'}</span>
+                </button>
+              </th>
               {retailers.map((r) => (
                 <th key={r.key} className="text-right px-3.5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.8px] whitespace-nowrap" style={{ color: r.color }}>
-                  {r.label}
+                  <button type="button" onClick={() => onSort(r.key)} className="inline-flex items-center gap-1 hover:opacity-80 transition-opacity">
+                    {r.label}
+                    <span className="text-[10px]">{sortKey === r.key ? (sortDir === 'asc' ? '↑' : '↓') : '↕'}</span>
+                  </button>
                 </th>
               ))}
-              <th className="text-right px-3.5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.8px] text-gray-300 whitespace-nowrap">Combined</th>
+              <th className="text-right px-3.5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.8px] text-gray-300 whitespace-nowrap">
+                <button type="button" onClick={() => onSort('combined')} className="inline-flex items-center gap-1 hover:text-gray-200 transition-colors">
+                  Combined
+                  <span className="text-[10px]">{sortKey === 'combined' ? (sortDir === 'asc' ? '↑' : '↓') : '↕'}</span>
+                </button>
+              </th>
             </tr>
           </thead>
           <tbody>
-            {allLabels.map((label) => {
-              const weeksByRetailer = retailers.map((r) => r.weeks.find((w) => w.label === label));
-              const combined = weeksByRetailer.reduce((sum, w) => sum + (w?.sales ?? 0), 0);
+            {sortedRows.map(({ label, weeksByRetailer, combined }) => {
               const isCurrent = label === 'Current Week';
               const isPrev = label === 'Previous Week';
               const isExpanded = expandedWeek === label;
@@ -129,24 +177,22 @@ export default function RetailerTrendTable({
                                   {brands.length === 0 ? (
                                     <div className="text-[11px] text-gray-600">No brand data</div>
                                   ) : (
-                                    <table className="w-full border-collapse text-[11px]">
-                                      <thead>
-                                        <tr>
-                                          <th className="text-left px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.8px] text-gray-500">Brand</th>
-                                          <th className="text-right px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.8px] text-gray-500">Sales</th>
-                                          <th className="text-right px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.8px] text-gray-500">Units</th>
-                                        </tr>
-                                      </thead>
-                                      <tbody>
-                                        {brands.sort((a, b) => b.sales - a.sales).map((b) => (
-                                          <tr key={b.brand} className="border-t border-white/[0.03] hover:bg-white/[0.02]">
-                                            <td className="px-2 py-1 text-white font-medium text-[11px]">{b.brand}</td>
-                                            <td className="px-2 py-1 text-right font-mono text-[#E8EDF5]">{fmtDollar(b.sales)}</td>
-                                            <td className="px-2 py-1 text-right font-mono text-[#E8EDF5]">{formatNumber(b.units)}</td>
-                                          </tr>
-                                        ))}
-                                      </tbody>
-                                    </table>
+                                    <SortableTable
+                                      columns={[
+                                        { key: 'brand', label: 'Brand' },
+                                        { key: 'sales', label: 'Sales', align: 'right', type: 'currency' },
+                                        { key: 'units', label: 'Units', align: 'right', type: 'number' },
+                                      ]}
+                                      rows={brands.map((b) => ({
+                                        rowId: b.brand,
+                                        brand: b.brand,
+                                        sales: b.sales,
+                                        units: b.units,
+                                      }))}
+                                      rowKey="rowId"
+                                      defaultSortKey="sales"
+                                      defaultSortDir="desc"
+                                    />
                                   )}
                                 </div>
                               );

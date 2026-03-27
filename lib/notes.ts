@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { unstable_noStore as noStore } from 'next/cache';
 
 export interface Note {
   id: string;
@@ -16,7 +17,7 @@ interface DbNote {
   created_at: string;
 }
 
-const VALID_COMPANIES = ['rpd-walmart', 'elevate', 'rpd-hd'] as const;
+const VALID_COMPANIES = ['rpd-walmart', 'elevate', 'rpd-hd', 'lustroware', 'somarsh'] as const;
 type Company = typeof VALID_COMPANIES[number];
 
 function toNote(row: DbNote): Note {
@@ -24,6 +25,7 @@ function toNote(row: DbNote): Note {
 }
 
 export async function readNotes(company: Company): Promise<Note[]> {
+  noStore();
   const { data, error } = await supabase
     .from('rpd_notes')
     .select('*')

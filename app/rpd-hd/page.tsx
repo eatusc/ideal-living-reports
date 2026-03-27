@@ -9,6 +9,7 @@ import RetailerTrendTable from '@/components/RetailerTrendTable';
 import TableChartToggle from '@/components/TableChartToggle';
 import TrendChart, { type ChartMetric, type ChartDataPoint, type ChartNote } from '@/components/TrendChart';
 import ImpactView from '@/components/ImpactView';
+import SortableTable from '@/components/SortableTable';
 import { readNotes, type Note } from '@/lib/notes';
 import Link from 'next/link';
 
@@ -203,27 +204,27 @@ function RetailerSalesSection({
             <div className="px-4 py-2.5 border-b border-white/[0.08] text-[11px] font-semibold uppercase tracking-wide" style={{ color }}>
               {label} — Current Week
             </div>
-            <table className="w-full border-collapse text-[12px]">
-              <thead>
-                <tr className="bg-dash-card2 border-b border-white/[0.08]">
-                  <th className="text-left px-3.5 py-2 text-[10px] font-semibold uppercase tracking-wide text-gray-400">Brand</th>
-                  <th className="text-right px-3.5 py-2 text-[10px] font-semibold uppercase tracking-wide text-gray-400">Sales</th>
-                  <th className="text-right px-3.5 py-2 text-[10px] font-semibold uppercase tracking-wide text-gray-400">Units</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.currentWeek.brands.filter((b) => b.sales > 0 || b.units > 0).map((b) => (
-                  <tr key={b.brand} className="border-b border-white/[0.05] last:border-0 hover:bg-white/[0.02] transition-colors">
-                    <td className="px-3.5 py-2 text-white font-medium text-[13px]">{b.brand}</td>
-                    <td className="px-3.5 py-2 text-right font-mono text-[#E8EDF5]">{fmtDollar(b.sales)}</td>
-                    <td className="px-3.5 py-2 text-right font-mono text-[#E8EDF5]">{b.units}</td>
-                  </tr>
-                ))}
-                {data.currentWeek.brands.filter((b) => b.sales > 0 || b.units > 0).length === 0 && (
-                  <tr><td colSpan={3} className="px-3.5 py-3 text-gray-500 text-[12px]">No sales this week</td></tr>
-                )}
-              </tbody>
-            </table>
+            <SortableTable
+              columns={[
+                { key: 'brand', label: 'Brand' },
+                { key: 'sales', label: 'Sales', align: 'right', type: 'currency' },
+                { key: 'units', label: 'Units', align: 'right', type: 'number' },
+              ]}
+              rows={data.currentWeek.brands
+                .filter((b) => b.sales > 0 || b.units > 0)
+                .map((b) => ({
+                  rowId: b.brand,
+                  brand: b.brand,
+                  sales: b.sales,
+                  units: b.units,
+                }))}
+              rowKey="rowId"
+              defaultSortKey="sales"
+              defaultSortDir="desc"
+            />
+            {data.currentWeek.brands.filter((b) => b.sales > 0 || b.units > 0).length === 0 && (
+              <div className="px-3.5 py-3 text-gray-500 text-[12px]">No sales this week</div>
+            )}
           </div>
         ))}
       </div>
@@ -244,6 +245,8 @@ export default async function RpdHdPage() {
   }
 
   const today = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  let hdNotes: Note[] = [];
+  try { hdNotes = await readNotes('rpd-hd'); } catch { /* ignore */ }
 
   if (parseError || !data) {
     return (
@@ -254,6 +257,7 @@ export default async function RpdHdPage() {
             <p className="font-semibold mb-1">No data file found</p>
             <p className="text-[13px] text-amber-400/80">{parseError ?? 'Upload an Excel file to generate the report.'}</p>
           </div>
+          <NotesSection company="rpd-hd" initialNotes={hdNotes} />
         </div>
       </main>
     );
@@ -313,9 +317,6 @@ export default async function RpdHdPage() {
   }
 
   // ── Chart data prep ──
-  let hdNotes: Note[] = [];
-  try { hdNotes = await readNotes('rpd-hd'); } catch { /* ignore */ }
-
   const hdTrendMetrics: ChartMetric[] = [
     { key: 'sales', label: 'Total Sales', color: '#22C55E', yAxisId: 'dollar', formatType: 'dollar', defaultVisible: true },
     { key: 'adSpend', label: 'Ad Spend', color: '#EF4444', yAxisId: 'dollar', formatType: 'dollar', defaultVisible: true },
@@ -439,45 +440,47 @@ export default async function RpdHdPage() {
           accentColor="#F96302"
           tableContent={
             <div className="bg-dash-card border border-white/[0.08] rounded-lg overflow-hidden">
-              <div className="table-scroll">
-                <table className="w-full border-collapse text-[12px]">
-                  <thead>
-                    <tr className="bg-dash-card2 border-b border-white/[0.08]">
-                      {['Campaign Group', 'Curr Ad Spend', 'Prev Ad Spend', 'Spend WoW Δ%', 'Ad Sales', 'Prev Ad Sales', 'ACoS', 'ROAS', 'Impressions'].map((h) => (
-                        <th key={h} className={`${h === 'Campaign Group' ? 'text-left' : 'text-right'} px-3.5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.8px] text-gray-400 whitespace-nowrap`}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {groupRows.map(({ name, curr: c, prev: p }) => {
-                      const currSpend = c?.adSpend ?? 0;
-                      const prevSpend = p?.adSpend ?? 0;
-                      const spendWowVal = wowPct(currSpend, prevSpend);
-                      const wow = wowArrow(spendWowVal, true);
-                      const acos = c?.acos ?? null;
-                      const flagAcos = acos !== null && acos > 0.7;
-                      const flagZeroSalesSpend = currSpend > 0 && (c?.adSales ?? 0) === 0;
-                      const flagged = flagAcos || flagZeroSalesSpend;
-                      return (
-                        <tr key={name} className="border-b border-white/[0.05] hover:bg-white/[0.02] transition-colors last:border-0">
-                          <td className="px-3.5 py-2.5 font-sans font-medium text-[13px] text-white whitespace-nowrap">
-                            {flagged && <span className="mr-1.5 text-amber-400">⚠️</span>}
-                            {name}
-                          </td>
-                          <td className="px-3.5 py-2.5 text-right font-mono text-[#E8EDF5]">{fmtDollar(currSpend)}</td>
-                          <td className="px-3.5 py-2.5 text-right font-mono text-gray-400">{fmtDollar(prevSpend)}</td>
-                          <td className={`px-3.5 py-2.5 text-right font-mono font-semibold ${wow.cls}`}>{spendWowVal === null ? '—' : `${wow.symbol} ${Math.abs(spendWowVal * 100).toFixed(0)}%`}</td>
-                          <td className="px-3.5 py-2.5 text-right font-mono text-[#E8EDF5]">{c?.adSales ? fmtDollar(c.adSales) : '—'}</td>
-                          <td className="px-3.5 py-2.5 text-right font-mono text-gray-400">{p?.adSales ? fmtDollar(p.adSales) : '—'}</td>
-                          <td className={`px-3.5 py-2.5 text-right font-mono font-semibold ${acosColor(acos)}`}>{acos !== null && acos > 0 ? fmtPct(acos) : '—'}</td>
-                          <td className="px-3.5 py-2.5 text-right font-mono text-[#E8EDF5]">{fmtRoas(c?.roas ?? null)}</td>
-                          <td className="px-3.5 py-2.5 text-right font-mono text-gray-400">{c?.impressions ? c.impressions.toLocaleString('en-US') : '—'}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+              <SortableTable
+                columns={[
+                  { key: 'group', label: 'Campaign Group' },
+                  { key: 'flags', label: 'Flags' },
+                  { key: 'currSpend', label: 'Curr Ad Spend', align: 'right', type: 'currency' },
+                  { key: 'prevSpend', label: 'Prev Ad Spend', align: 'right', type: 'currency' },
+                  { key: 'spendWow', label: 'Spend WoW Δ%', align: 'right', type: 'percent' },
+                  { key: 'adSales', label: 'Ad Sales', align: 'right', type: 'currency' },
+                  { key: 'prevAdSales', label: 'Prev Ad Sales', align: 'right', type: 'currency' },
+                  { key: 'acos', label: 'ACoS', align: 'right', type: 'percent' },
+                  { key: 'roas', label: 'ROAS', align: 'right', type: 'roas' },
+                  { key: 'impressions', label: 'Impressions', align: 'right', type: 'number' },
+                ]}
+                rows={groupRows.map(({ name, curr: c, prev: p }) => {
+                  const currSpend = c?.adSpend ?? 0;
+                  const prevSpend = p?.adSpend ?? 0;
+                  const acos = c?.acos ?? null;
+                  const flagAcos = acos !== null && acos > 0.7;
+                  const flagZeroSalesSpend = currSpend > 0 && (c?.adSales ?? 0) === 0;
+                  const flagReasons = [
+                    flagAcos && acos !== null ? `ACoS ${(acos * 100).toFixed(0)}% (>70%)` : null,
+                    flagZeroSalesSpend ? `${fmtDollar(currSpend)} spend with $0 ad sales` : null,
+                  ].filter(Boolean).join(' · ');
+                  return {
+                    rowId: name,
+                    group: name,
+                    flags: flagReasons || '—',
+                    currSpend,
+                    prevSpend,
+                    spendWow: wowPct(currSpend, prevSpend),
+                    adSales: c?.adSales ?? 0,
+                    prevAdSales: p?.adSales ?? 0,
+                    acos,
+                    roas: c?.roas ?? null,
+                    impressions: c?.impressions ?? 0,
+                  };
+                })}
+                rowKey="rowId"
+                defaultSortKey="currSpend"
+                defaultSortDir="desc"
+              />
             </div>
           }
           chartContent={
@@ -547,7 +550,7 @@ export default async function RpdHdPage() {
         </div>
 
         {/* ── NOTES ──────────────────────────────────────────── */}
-        <NotesSection company="rpd-hd" />
+        <NotesSection company="rpd-hd" initialNotes={hdNotes} />
 
         {/* ── FOOTER ─────────────────────────────────────────── */}
         <footer className="mt-12 pt-5 border-t border-white/[0.08] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 font-mono text-[11px] text-gray-500">

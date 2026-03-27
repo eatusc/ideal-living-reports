@@ -11,7 +11,8 @@ interface Note {
 }
 
 interface NotesSectionProps {
-  company: 'rpd-walmart' | 'elevate' | 'rpd-hd';
+  company: 'rpd-walmart' | 'elevate' | 'rpd-hd' | 'lustroware' | 'somarsh';
+  initialNotes?: Note[];
 }
 
 const DEFAULT_DONE_BY = 'admin';
@@ -22,9 +23,9 @@ function autoResize(el: HTMLTextAreaElement | null) {
   el.style.height = el.scrollHeight + 'px';
 }
 
-export default function NotesSection({ company }: NotesSectionProps) {
-  const [notes, setNotes] = useState<Note[]>([]);
-  const [loading, setLoading] = useState(true);
+export default function NotesSection({ company, initialNotes = [] }: NotesSectionProps) {
+  const [notes, setNotes] = useState<Note[]>(initialNotes.slice().reverse());
+  const [loading, setLoading] = useState(initialNotes.length === 0);
   const [showForm, setShowForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
@@ -48,7 +49,7 @@ export default function NotesSection({ company }: NotesSectionProps) {
 
   const fetchNotes = useCallback(async () => {
     try {
-      const res = await fetch(withBasePath(`/api/notes/${company}`));
+      const res = await fetch(withBasePath(`/api/notes/${company}`), { cache: 'no-store' });
       const data: Note[] = await res.json();
       setNotes(data.slice().reverse()); // newest first
     } catch {

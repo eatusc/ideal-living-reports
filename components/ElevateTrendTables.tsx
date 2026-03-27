@@ -55,6 +55,8 @@ function MetricCard({ label, curr, prev, fmt, invert }: {
 
 export function ElevateAmazonTrendTable({ weeks }: { weeks: ElevateWeekData[] }) {
   const [expandedWeek, setExpandedWeek] = useState<string | null>(null);
+  const [sortKey, setSortKey] = useState<string>('order');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const display = weeks.slice(-8);
   const current = display[display.length - 1];
 
@@ -62,11 +64,47 @@ export function ElevateAmazonTrendTable({ weeks }: { weeks: ElevateWeekData[] })
     const prevWeek = i > 0 ? display[i - 1] : (weeks.length > display.length ? weeks[weeks.length - display.length - 1] : null);
     return {
       ...week,
+      order: i,
       prevWeek,
       salesWow: wowPct(week.sales, prevWeek?.sales ?? 0),
       adSpendWow: wowPct(week.adSpend, prevWeek?.adSpend ?? 0),
     };
   });
+
+  const sortedWeeks = [...trendWeeks].sort((a, b) => {
+    const av = a[sortKey as keyof typeof a] as string | number | null | undefined;
+    const bv = b[sortKey as keyof typeof b] as string | number | null | undefined;
+    if (av === bv) return 0;
+    if (av === null || av === undefined) return 1;
+    if (bv === null || bv === undefined) return -1;
+    if (typeof av === 'number' && typeof bv === 'number') return sortDir === 'asc' ? av - bv : bv - av;
+    const cmp = String(av).localeCompare(String(bv), undefined, { numeric: true, sensitivity: 'base' });
+    return sortDir === 'asc' ? cmp : -cmp;
+  });
+
+  function onSort(nextKey: string) {
+    if (sortKey === nextKey) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+      return;
+    }
+    setSortKey(nextKey);
+    setSortDir(nextKey === 'order' ? 'asc' : 'desc');
+  }
+
+  const headers: Array<{ key: string; label: string; align?: 'left' | 'right' }> = [
+    { key: 'label', label: 'Week', align: 'left' },
+    { key: 'sales', label: 'Sales' },
+    { key: 'salesWow', label: 'Sales WoW' },
+    { key: 'units', label: 'Units' },
+    { key: 'orders', label: 'Orders' },
+    { key: 'sessions', label: 'Sessions' },
+    { key: 'conversionRate', label: 'Conv. Rate' },
+    { key: 'adSpend', label: 'Ad Spend' },
+    { key: 'adSpendWow', label: 'Spend WoW' },
+    { key: 'adSales', label: 'Ad Sales' },
+    { key: 'acos', label: 'ACoS' },
+    { key: 'roas', label: 'ROAS' },
+  ];
 
   const colCount = 12;
 
@@ -76,13 +114,18 @@ export function ElevateAmazonTrendTable({ weeks }: { weeks: ElevateWeekData[] })
         <table className="w-full border-collapse text-[12px]">
           <thead>
             <tr className="bg-dash-card2 border-b border-white/[0.08]">
-              {['Week', 'Sales', 'Sales WoW', 'Units', 'Orders', 'Sessions', 'Conv. Rate', 'Ad Spend', 'Spend WoW', 'Ad Sales', 'ACoS', 'ROAS'].map((h) => (
-                <th key={h} className={`${h === 'Week' ? 'text-left' : 'text-right'} px-3.5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.8px] text-gray-400 whitespace-nowrap`}>{h}</th>
+              {headers.map((h) => (
+                <th key={h.key} className={`${h.align === 'left' ? 'text-left' : 'text-right'} px-3.5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.8px] text-gray-400 whitespace-nowrap`}>
+                  <button type="button" onClick={() => onSort(h.key)} className="inline-flex items-center gap-1 hover:text-gray-200 transition-colors">
+                    {h.label}
+                    <span className="text-[10px]">{sortKey === h.key ? (sortDir === 'asc' ? '↑' : '↓') : '↕'}</span>
+                  </button>
+                </th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {trendWeeks.map((week) => {
+            {sortedWeeks.map((week) => {
               const isCurrent = week.label === current.label;
               const isExpanded = expandedWeek === week.label;
               const hasPrev = week.prevWeek != null;
@@ -163,6 +206,8 @@ export function ElevateAmazonTrendTable({ weeks }: { weeks: ElevateWeekData[] })
 
 export function ElevateWalmartTrendTable({ weeks }: { weeks: ElevateWalmartWeekData[] }) {
   const [expandedWeek, setExpandedWeek] = useState<string | null>(null);
+  const [sortKey, setSortKey] = useState<string>('order');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const display = weeks.slice(-8);
   const current = display[display.length - 1];
 
@@ -170,12 +215,47 @@ export function ElevateWalmartTrendTable({ weeks }: { weeks: ElevateWalmartWeekD
     const prevWeek = i > 0 ? display[i - 1] : (weeks.length > display.length ? weeks[weeks.length - display.length - 1] : null);
     return {
       ...week,
+      order: i,
       prevWeek,
       salesWow: wowPct(week.sales, prevWeek?.sales ?? 0),
       adSpendWow: wowPct(week.adSpend, prevWeek?.adSpend ?? 0),
       organicWow: wowPct(week.organicSales, prevWeek?.organicSales ?? 0),
     };
   });
+
+  const sortedWeeks = [...trendWeeks].sort((a, b) => {
+    const av = a[sortKey as keyof typeof a] as string | number | null | undefined;
+    const bv = b[sortKey as keyof typeof b] as string | number | null | undefined;
+    if (av === bv) return 0;
+    if (av === null || av === undefined) return 1;
+    if (bv === null || bv === undefined) return -1;
+    if (typeof av === 'number' && typeof bv === 'number') return sortDir === 'asc' ? av - bv : bv - av;
+    const cmp = String(av).localeCompare(String(bv), undefined, { numeric: true, sensitivity: 'base' });
+    return sortDir === 'asc' ? cmp : -cmp;
+  });
+
+  function onSort(nextKey: string) {
+    if (sortKey === nextKey) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+      return;
+    }
+    setSortKey(nextKey);
+    setSortDir(nextKey === 'order' ? 'asc' : 'desc');
+  }
+
+  const headers: Array<{ key: string; label: string; align?: 'left' | 'right' }> = [
+    { key: 'label', label: 'Week', align: 'left' },
+    { key: 'sales', label: 'Sales' },
+    { key: 'salesWow', label: 'Sales WoW' },
+    { key: 'units', label: 'Units' },
+    { key: 'adSpend', label: 'Ad Spend' },
+    { key: 'adSpendWow', label: 'Spend WoW' },
+    { key: 'adSales', label: 'Ad Sales' },
+    { key: 'acos', label: 'ACoS' },
+    { key: 'roas', label: 'ROAS' },
+    { key: 'organicSales', label: 'Organic' },
+    { key: 'organicWow', label: 'Organic WoW' },
+  ];
 
   const colCount = 11;
 
@@ -185,13 +265,18 @@ export function ElevateWalmartTrendTable({ weeks }: { weeks: ElevateWalmartWeekD
         <table className="w-full border-collapse text-[12px]">
           <thead>
             <tr className="bg-dash-card2 border-b border-white/[0.08]">
-              {['Week', 'Sales', 'Sales WoW', 'Units', 'Ad Spend', 'Spend WoW', 'Ad Sales', 'ACoS', 'ROAS', 'Organic', 'Organic WoW'].map((h) => (
-                <th key={h} className={`${h === 'Week' ? 'text-left' : 'text-right'} px-3.5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.8px] text-gray-400 whitespace-nowrap`}>{h}</th>
+              {headers.map((h) => (
+                <th key={h.key} className={`${h.align === 'left' ? 'text-left' : 'text-right'} px-3.5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.8px] text-gray-400 whitespace-nowrap`}>
+                  <button type="button" onClick={() => onSort(h.key)} className="inline-flex items-center gap-1 hover:text-gray-200 transition-colors">
+                    {h.label}
+                    <span className="text-[10px]">{sortKey === h.key ? (sortDir === 'asc' ? '↑' : '↓') : '↕'}</span>
+                  </button>
+                </th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {trendWeeks.map((week) => {
+            {sortedWeeks.map((week) => {
               const isCurrent = week.label === current.label;
               const isExpanded = expandedWeek === week.label;
               const hasPrev = week.prevWeek != null;

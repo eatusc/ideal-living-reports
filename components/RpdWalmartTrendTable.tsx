@@ -2,6 +2,7 @@
 
 import { Fragment, useState } from 'react';
 import { wowPct, fmtDollar, fmtPct, fmtRoas, type BrandData, type WeekData } from '@/lib/formatUtils';
+import SortableTable from '@/components/SortableTable';
 
 function formatNumber(n: number): string {
   return Math.round(n).toLocaleString('en-US');
@@ -29,17 +30,54 @@ const TH = 'text-right px-3.5 py-2 text-[10px] font-semibold uppercase tracking-
 
 export default function RpdWalmartTrendTable({ weeks }: { weeks: WeekData[] }) {
   const [expandedWeek, setExpandedWeek] = useState<string | null>(null);
+  const [sortKey, setSortKey] = useState<string>('order');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
 
   const trendWeeks = weeks.map((week, i) => {
     const prevWeek = i > 0 ? weeks[i - 1] : null;
     return {
       ...week,
+      order: i,
       salesWow: wowPct(week.sales, prevWeek?.sales ?? 0),
       adSpendWow: wowPct(week.adSpend, prevWeek?.adSpend ?? 0),
       adSalesWow: wowPct(week.adSales, prevWeek?.adSales ?? 0),
       organicWow: wowPct(week.organicSales, prevWeek?.organicSales ?? 0),
     };
   });
+
+  const sortedWeeks = [...trendWeeks].sort((a, b) => {
+    const av = a[sortKey as keyof typeof a] as string | number | null | undefined;
+    const bv = b[sortKey as keyof typeof b] as string | number | null | undefined;
+    if (av === bv) return 0;
+    if (av === null || av === undefined) return 1;
+    if (bv === null || bv === undefined) return -1;
+    if (typeof av === 'number' && typeof bv === 'number') return sortDir === 'asc' ? av - bv : bv - av;
+    const cmp = String(av).localeCompare(String(bv), undefined, { numeric: true, sensitivity: 'base' });
+    return sortDir === 'asc' ? cmp : -cmp;
+  });
+
+  function onSort(nextKey: string) {
+    if (sortKey === nextKey) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+      return;
+    }
+    setSortKey(nextKey);
+    setSortDir(nextKey === 'order' ? 'asc' : 'desc');
+  }
+
+  const headers: Array<{ key: string; label: string; align?: 'left' | 'right' }> = [
+    { key: 'label', label: 'Week', align: 'left' },
+    { key: 'sales', label: 'Total Sales' },
+    { key: 'salesWow', label: 'Sales WoW' },
+    { key: 'units', label: 'Units' },
+    { key: 'adSpend', label: 'Ad Spend' },
+    { key: 'adSpendWow', label: 'Spend WoW' },
+    { key: 'adSales', label: 'Ad Sales' },
+    { key: 'acos', label: 'ACoS' },
+    { key: 'roas', label: 'ROAS' },
+    { key: 'organicSales', label: 'Organic Sales' },
+    { key: 'organicWow', label: 'Organic WoW' },
+  ];
 
   const colCount = 11;
 
@@ -49,21 +87,18 @@ export default function RpdWalmartTrendTable({ weeks }: { weeks: WeekData[] }) {
         <table className="w-full border-collapse text-[12px]">
           <thead>
             <tr className="bg-dash-card2 border-b border-white/[0.08]">
-              <th className="text-left px-3.5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.8px] text-gray-400 whitespace-nowrap">Week</th>
-              <th className="text-right px-3.5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.8px] text-gray-400 whitespace-nowrap">Total Sales</th>
-              <th className="text-right px-3.5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.8px] text-gray-400 whitespace-nowrap">Sales WoW</th>
-              <th className="text-right px-3.5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.8px] text-gray-400 whitespace-nowrap">Units</th>
-              <th className="text-right px-3.5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.8px] text-gray-400 whitespace-nowrap">Ad Spend</th>
-              <th className="text-right px-3.5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.8px] text-gray-400 whitespace-nowrap">Spend WoW</th>
-              <th className="text-right px-3.5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.8px] text-gray-400 whitespace-nowrap">Ad Sales</th>
-              <th className="text-right px-3.5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.8px] text-gray-400 whitespace-nowrap">ACoS</th>
-              <th className="text-right px-3.5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.8px] text-gray-400 whitespace-nowrap">ROAS</th>
-              <th className="text-right px-3.5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.8px] text-gray-400 whitespace-nowrap">Organic Sales</th>
-              <th className="text-right px-3.5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.8px] text-gray-400 whitespace-nowrap">Organic WoW</th>
+              {headers.map((h) => (
+                <th key={h.key} className={`${h.align === 'left' ? 'text-left' : 'text-right'} px-3.5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.8px] text-gray-400 whitespace-nowrap`}>
+                  <button type="button" onClick={() => onSort(h.key)} className="inline-flex items-center gap-1 hover:text-gray-200 transition-colors">
+                    {h.label}
+                    <span className="text-[10px]">{sortKey === h.key ? (sortDir === 'asc' ? '↑' : '↓') : '↕'}</span>
+                  </button>
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody>
-            {trendWeeks.map((week) => {
+            {sortedWeeks.map((week) => {
               const isCurrent = week.label === 'Current Week';
               const isPrev = week.label === 'Previous Week';
               const isExpanded = expandedWeek === week.label;
@@ -121,37 +156,34 @@ export default function RpdWalmartTrendTable({ weeks }: { weeks: WeekData[] }) {
                           <div className="text-[10px] font-semibold uppercase tracking-[1px] text-gray-500 mb-2">
                             Brand Breakdown — {isCurrent ? 'Current Week' : isPrev ? 'Previous Week' : week.label}
                           </div>
-                          <table className="w-full border-collapse text-[11px]">
-                            <thead>
-                              <tr>
-                                <th className="text-left px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.8px] text-gray-500">Brand</th>
-                                <th className={TH}>Sales</th>
-                                <th className={TH}>Units</th>
-                                <th className={TH}>Ad Spend</th>
-                                <th className={TH}>Ad Sales</th>
-                                <th className={TH}>ACoS</th>
-                                <th className={TH}>ROAS</th>
-                                <th className={TH}>Organic</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {week.brands
-                                .filter((b) => b.sales > 0 || b.adSpend > 0)
-                                .sort((a, b) => b.sales - a.sales)
-                                .map((b) => (
-                                  <tr key={b.brand} className="border-t border-white/[0.03] hover:bg-white/[0.02]">
-                                    <td className="px-3 py-1.5 text-white font-medium text-[12px]">{b.brand}</td>
-                                    <td className="px-3 py-1.5 text-right font-mono text-[#E8EDF5]">{fmtDollar(b.sales)}</td>
-                                    <td className="px-3 py-1.5 text-right font-mono text-[#E8EDF5]">{formatNumber(b.units)}</td>
-                                    <td className="px-3 py-1.5 text-right font-mono text-[#E8EDF5]">{fmtDollar(b.adSpend)}</td>
-                                    <td className="px-3 py-1.5 text-right font-mono text-[#E8EDF5]">{b.adSales > 0 ? fmtDollar(b.adSales) : '—'}</td>
-                                    <td className={`px-3 py-1.5 text-right font-mono font-semibold ${acosColorInline(b.acos)}`}>{b.acos !== null && b.acos > 0 ? fmtPct(b.acos) : '—'}</td>
-                                    <td className="px-3 py-1.5 text-right font-mono text-[#E8EDF5]">{fmtRoas(b.roas)}</td>
-                                    <td className="px-3 py-1.5 text-right font-mono text-[#E8EDF5]">{fmtDollar(b.organicSales)}</td>
-                                  </tr>
-                                ))}
-                            </tbody>
-                          </table>
+                          <SortableTable
+                            columns={[
+                              { key: 'brand', label: 'Brand' },
+                              { key: 'sales', label: 'Sales', align: 'right', type: 'currency' },
+                              { key: 'units', label: 'Units', align: 'right', type: 'number' },
+                              { key: 'adSpend', label: 'Ad Spend', align: 'right', type: 'currency' },
+                              { key: 'adSales', label: 'Ad Sales', align: 'right', type: 'currency' },
+                              { key: 'acos', label: 'ACoS', align: 'right', type: 'percent' },
+                              { key: 'roas', label: 'ROAS', align: 'right', type: 'roas' },
+                              { key: 'organicSales', label: 'Organic', align: 'right', type: 'currency' },
+                            ]}
+                            rows={week.brands
+                              .filter((b) => b.sales > 0 || b.adSpend > 0)
+                              .map((b) => ({
+                                rowId: b.brand,
+                                brand: b.brand,
+                                sales: b.sales,
+                                units: b.units,
+                                adSpend: b.adSpend,
+                                adSales: b.adSales,
+                                acos: b.acos,
+                                roas: b.roas,
+                                organicSales: b.organicSales,
+                              }))}
+                            rowKey="rowId"
+                            defaultSortKey="sales"
+                            defaultSortDir="desc"
+                          />
                         </div>
                       </td>
                     </tr>
@@ -165,4 +197,3 @@ export default function RpdWalmartTrendTable({ weeks }: { weeks: WeekData[] }) {
     </div>
   );
 }
-

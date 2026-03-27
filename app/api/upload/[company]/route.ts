@@ -9,6 +9,8 @@ const COMPANY_DIRS: Record<string, string> = {
   'rpd-walmart': 'rpd',
   'elevate':     'elevate',
   'rpd-hd':      'rpd-hd',
+  'lustroware':  'lustroware',
+  'somarsh':     'somarsh',
 };
 
 const XLSX_CONTENT_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
@@ -18,6 +20,8 @@ const EXPECTED_SHEETS: Record<string, string[]> = {
   'rpd-walmart': ['WALMART_weekly_reporting_2026-B', 'SEM Campaigns Data 2026'],
   'elevate':     ['2026 - Amazon Performance Repor', '2026 - Walmart Performance Repo', '2026 SEM Campaigns Data - per d'],
   'rpd-hd':      ['ALL - 2026 - Orange Access'],
+  'lustroware':  ['2026 - Performance Report', '2026 - As inidividual SKUs'],
+  'somarsh':     ['ai-last30-Sponsored_Products_Se'],
 };
 
 /** Quick-scan the Excel buffer for sheet validation and row/week counts */

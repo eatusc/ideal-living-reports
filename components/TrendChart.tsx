@@ -85,10 +85,10 @@ function ChartTooltip({
 
   if (showNoteOnly) {
     return (
-      <div className="bg-white/95 border border-slate-200 rounded-lg px-3 py-2.5 shadow-xl text-[11px] max-w-[260px]">
+      <div className="bg-white/95 border border-slate-200 rounded-lg px-3.5 py-3 shadow-xl text-[13px] max-w-[340px]">
         <div className="font-semibold text-slate-900 mb-1.5">{label}</div>
         {weekNotes.map((n, i) => (
-          <div key={i} className="text-slate-600 text-[10px] leading-relaxed whitespace-pre-line">
+          <div key={i} className="text-slate-600 text-[12px] leading-relaxed whitespace-pre-line">
             <span className="text-amber-400">{n.date}</span>: {n.text}
           </div>
         ))}
@@ -97,26 +97,26 @@ function ChartTooltip({
   }
 
   return (
-    <div className="bg-white/95 border border-slate-200 rounded-lg px-3 py-2.5 shadow-xl text-[11px] max-w-[260px]">
+    <div className="bg-white/95 border border-slate-200 rounded-lg px-3.5 py-3 shadow-xl text-[13px] max-w-[340px]">
       <div className="font-semibold text-slate-900 mb-1.5">{label}</div>
       {payload.map((entry) => {
         const m = metricMap.get(entry.dataKey);
         if (!m || entry.value == null) return null;
         return (
-          <div key={entry.dataKey} className="flex items-center justify-between gap-4 py-0.5">
+          <div key={entry.dataKey} className="flex items-center justify-between gap-4 py-1">
             <span className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: entry.color }} />
-              <span className="text-slate-500">{m.label}</span>
+              <span className="text-slate-500 text-[12px]">{m.label}</span>
             </span>
-            <span className="font-mono text-slate-900">{fmt(m.formatType, entry.value)}</span>
+            <span className="font-mono text-slate-900 text-[12px]">{fmt(m.formatType, entry.value)}</span>
           </div>
         );
       })}
       {weekNotes.length > 0 && (
         <div className="mt-2 pt-2 border-t border-slate-200">
-          <div className="text-[10px] font-semibold text-amber-400 uppercase tracking-wide mb-1">Notes</div>
+          <div className="text-[11px] font-semibold text-amber-400 uppercase tracking-wide mb-1">Notes</div>
           {weekNotes.map((n, i) => (
-            <div key={i} className="text-slate-500 text-[10px] leading-relaxed whitespace-pre-line">
+            <div key={i} className="text-slate-500 text-[12px] leading-relaxed whitespace-pre-line">
               {n.date}: {n.text}
             </div>
           ))}

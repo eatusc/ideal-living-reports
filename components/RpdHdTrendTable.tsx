@@ -3,6 +3,7 @@
 import { Fragment, useState } from 'react';
 import { wowPct, fmtDollar, fmtPct, fmtRoas } from '@/lib/formatUtils';
 import type { RpdHdWeekData } from '@/lib/formatUtils';
+import SortableTable from '@/components/SortableTable';
 
 function formatNumber(n: number): string {
   return Math.round(n).toLocaleString('en-US');
@@ -26,8 +27,6 @@ function acosColor(acos: number | null): string {
   return 'text-red-400';
 }
 
-const TH = 'text-right px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.8px] text-gray-500 whitespace-nowrap';
-
 interface DscoEntry { sales: number; units: number }
 
 export default function RpdHdTrendTable({
@@ -42,6 +41,8 @@ export default function RpdHdTrendTable({
   dscoByLabel?: Record<string, DscoEntry>;
 }) {
   const [expandedWeek, setExpandedWeek] = useState<string | null>(null);
+  const [sortKey, setSortKey] = useState<string>('order');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
 
   // Lookup DSCO data by startDate first, then fall back to label
   const lookupDsco = (week: RpdHdWeekData): DscoEntry | undefined => {
@@ -60,6 +61,7 @@ export default function RpdHdTrendTable({
     const prevOrganic = prevDsco != null && prevWeek ? Math.max(0, prevDsco.sales - prevWeek.adSales) : null;
     return {
       ...week,
+      order: i,
       rowSales,
       rowUnits,
       rowOrganic,
@@ -69,6 +71,40 @@ export default function RpdHdTrendTable({
     };
   });
 
+  const sortedWeeks = [...trendWeeks].sort((a, b) => {
+    const av = a[sortKey as keyof typeof a] as string | number | null | undefined;
+    const bv = b[sortKey as keyof typeof b] as string | number | null | undefined;
+    if (av === bv) return 0;
+    if (av === null || av === undefined) return 1;
+    if (bv === null || bv === undefined) return -1;
+    if (typeof av === 'number' && typeof bv === 'number') return sortDir === 'asc' ? av - bv : bv - av;
+    const cmp = String(av).localeCompare(String(bv), undefined, { numeric: true, sensitivity: 'base' });
+    return sortDir === 'asc' ? cmp : -cmp;
+  });
+
+  function onSort(nextKey: string) {
+    if (sortKey === nextKey) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+      return;
+    }
+    setSortKey(nextKey);
+    setSortDir(nextKey === 'order' ? 'asc' : 'desc');
+  }
+
+  const headers: Array<{ key: string; label: string; sublabel?: string; align?: 'left' | 'right' }> = [
+    { key: 'label', label: 'Week', align: 'left' },
+    { key: 'rowSales', label: 'Total Sales', sublabel: 'HD US + HD Canada (DSCO)' },
+    { key: 'salesWow', label: 'Sales WoW' },
+    { key: 'rowUnits', label: 'Units', sublabel: 'HD US + HD Canada (DSCO)' },
+    { key: 'adSpend', label: 'Ad Spend', sublabel: 'Orange Access' },
+    { key: 'adSpendWow', label: 'Spend WoW' },
+    { key: 'adSales', label: 'Ad Sales', sublabel: 'Orange Access' },
+    { key: 'acos', label: 'ACoS', sublabel: 'Orange Access' },
+    { key: 'roas', label: 'ROAS', sublabel: 'Orange Access' },
+    { key: 'rowOrganic', label: 'Organic Sales', sublabel: 'DSCO − OA Ad Sales' },
+    { key: 'organicWow', label: 'Organic WoW' },
+  ];
+
   const colCount = 11;
 
   return (
@@ -77,42 +113,19 @@ export default function RpdHdTrendTable({
         <table className="w-full border-collapse text-[12px]">
           <thead>
             <tr className="bg-dash-card2 border-b border-white/[0.08]">
-              <th className="text-left px-3.5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.8px] text-gray-400 whitespace-nowrap">Week</th>
-              <th className="text-right px-3.5 py-2.5 whitespace-nowrap">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.8px] text-gray-400">Total Sales</div>
-                <div className="text-[9px] text-gray-600 normal-case tracking-normal font-normal">HD US + HD Canada (DSCO)</div>
-              </th>
-              <th className="text-right px-3.5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.8px] text-gray-400 whitespace-nowrap">Sales WoW</th>
-              <th className="text-right px-3.5 py-2.5 whitespace-nowrap">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.8px] text-gray-400">Units</div>
-                <div className="text-[9px] text-gray-600 normal-case tracking-normal font-normal">HD US + HD Canada (DSCO)</div>
-              </th>
-              <th className="text-right px-3.5 py-2.5 whitespace-nowrap">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.8px] text-gray-400">Ad Spend</div>
-                <div className="text-[9px] text-gray-600 normal-case tracking-normal font-normal">Orange Access</div>
-              </th>
-              <th className="text-right px-3.5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.8px] text-gray-400 whitespace-nowrap">Spend WoW</th>
-              <th className="text-right px-3.5 py-2.5 whitespace-nowrap">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.8px] text-gray-400">Ad Sales</div>
-                <div className="text-[9px] text-gray-600 normal-case tracking-normal font-normal">Orange Access</div>
-              </th>
-              <th className="text-right px-3.5 py-2.5 whitespace-nowrap">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.8px] text-gray-400">ACoS</div>
-                <div className="text-[9px] text-gray-600 normal-case tracking-normal font-normal">Orange Access</div>
-              </th>
-              <th className="text-right px-3.5 py-2.5 whitespace-nowrap">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.8px] text-gray-400">ROAS</div>
-                <div className="text-[9px] text-gray-600 normal-case tracking-normal font-normal">Orange Access</div>
-              </th>
-              <th className="text-right px-3.5 py-2.5 whitespace-nowrap">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.8px] text-gray-400">Organic Sales</div>
-                <div className="text-[9px] text-gray-600 normal-case tracking-normal font-normal">DSCO − OA Ad Sales</div>
-              </th>
-              <th className="text-right px-3.5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.8px] text-gray-400 whitespace-nowrap">Organic WoW</th>
+              {headers.map((h) => (
+                <th key={h.key} className={`${h.align === 'left' ? 'text-left' : 'text-right'} px-3.5 py-2.5 whitespace-nowrap`}>
+                  <button type="button" onClick={() => onSort(h.key)} className="inline-flex items-center gap-1 hover:text-gray-200 transition-colors">
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.8px] text-gray-400">{h.label}</span>
+                    <span className="text-[10px] text-gray-400">{sortKey === h.key ? (sortDir === 'asc' ? '↑' : '↓') : '↕'}</span>
+                  </button>
+                  {h.sublabel && <div className="text-[9px] text-gray-600 normal-case tracking-normal font-normal">{h.sublabel}</div>}
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody>
-            {trendWeeks.map((week) => {
+            {sortedWeeks.map((week) => {
               const isCurrent = week.label === currentLabel;
               const isExpanded = expandedWeek === week.label;
               const hasGroups = week.groups.length > 0;
@@ -165,33 +178,30 @@ export default function RpdHdTrendTable({
                           <div className="text-[10px] font-semibold uppercase tracking-[1px] text-gray-500 mb-2">
                             Campaign Group Breakdown — {week.label}
                           </div>
-                          <table className="w-full border-collapse text-[11px]">
-                            <thead>
-                              <tr>
-                                <th className="text-left px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.8px] text-gray-500">Campaign Group</th>
-                                <th className={TH}>Ad Spend</th>
-                                <th className={TH}>Ad Sales</th>
-                                <th className={TH}>ACoS</th>
-                                <th className={TH}>ROAS</th>
-                                <th className={TH}>Impressions</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {week.groups
-                                .filter((g) => g.adSpend > 0 || g.adSales > 0)
-                                .sort((a, b) => b.adSpend - a.adSpend)
-                                .map((g) => (
-                                  <tr key={g.group} className="border-t border-white/[0.03] hover:bg-white/[0.02]">
-                                    <td className="px-3 py-1.5 text-white font-medium text-[12px]">{g.group}</td>
-                                    <td className="px-3 py-1.5 text-right font-mono text-[#E8EDF5]">{fmtDollar(g.adSpend)}</td>
-                                    <td className="px-3 py-1.5 text-right font-mono text-[#E8EDF5]">{g.adSales > 0 ? fmtDollar(g.adSales) : '—'}</td>
-                                    <td className={`px-3 py-1.5 text-right font-mono font-semibold ${acosColor(g.acos)}`}>{g.acos !== null && g.acos > 0 ? fmtPct(g.acos) : '—'}</td>
-                                    <td className="px-3 py-1.5 text-right font-mono text-[#E8EDF5]">{fmtRoas(g.roas)}</td>
-                                    <td className="px-3 py-1.5 text-right font-mono text-gray-400">{g.impressions > 0 ? g.impressions.toLocaleString('en-US') : '—'}</td>
-                                  </tr>
-                                ))}
-                            </tbody>
-                          </table>
+                          <SortableTable
+                            columns={[
+                              { key: 'group', label: 'Campaign Group' },
+                              { key: 'adSpend', label: 'Ad Spend', align: 'right', type: 'currency' },
+                              { key: 'adSales', label: 'Ad Sales', align: 'right', type: 'currency' },
+                              { key: 'acos', label: 'ACoS', align: 'right', type: 'percent' },
+                              { key: 'roas', label: 'ROAS', align: 'right', type: 'roas' },
+                              { key: 'impressions', label: 'Impressions', align: 'right', type: 'number' },
+                            ]}
+                            rows={week.groups
+                              .filter((g) => g.adSpend > 0 || g.adSales > 0)
+                              .map((g) => ({
+                                rowId: g.group,
+                                group: g.group,
+                                adSpend: g.adSpend,
+                                adSales: g.adSales,
+                                acos: g.acos,
+                                roas: g.roas,
+                                impressions: g.impressions,
+                              }))}
+                            rowKey="rowId"
+                            defaultSortKey="adSpend"
+                            defaultSortDir="desc"
+                          />
                         </div>
                       </td>
                     </tr>

@@ -8,6 +8,7 @@ import { ElevateAmazonTrendTable, ElevateWalmartTrendTable } from '@/components/
 import TableChartToggle from '@/components/TableChartToggle';
 import TrendChart, { type ChartMetric, type ChartDataPoint, type ChartNote } from '@/components/TrendChart';
 import ImpactView from '@/components/ImpactView';
+import SortableTable from '@/components/SortableTable';
 import { readNotes, type Note } from '@/lib/notes';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -133,6 +134,8 @@ export default async function ElevatePage() {
   }
 
   const today = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  let notes: Note[] = [];
+  try { notes = await readNotes('elevate'); } catch { /* ignore */ }
 
   if (parseError || !data) {
     return (
@@ -143,6 +146,7 @@ export default async function ElevatePage() {
             <p className="font-semibold mb-1">No data file found</p>
             <p className="text-[13px] text-amber-400/80">{parseError ?? 'Upload an Excel file to generate the report.'}</p>
           </div>
+          <NotesSection company="elevate" initialNotes={notes} />
         </div>
       </main>
     );
@@ -151,9 +155,6 @@ export default async function ElevatePage() {
   const { amazon, walmart, sem } = data;
 
   // ── Chart data prep ──
-  let notes: Note[] = [];
-  try { notes = await readNotes('elevate'); } catch { /* ignore */ }
-
   // Helper to map notes to weeks
   function mapNotesToWeeks(weekData: Array<{ label: string; startDate?: string; endDate?: string }>): ChartNote[] {
     return notes.flatMap((n) => {
@@ -387,36 +388,34 @@ export default async function ElevatePage() {
                 .map((c) => ({ curr: c, prev: prevMap.get(c.campaign) ?? null }));
               return (
                 <div className="bg-dash-card border border-white/[0.08] rounded-lg overflow-hidden mb-2">
-                  <div className="table-scroll">
-                    <table className="w-full border-collapse text-[12px]">
-                      <thead>
-                        <tr className="bg-dash-card2 border-b border-white/[0.08]">
-                          {['Campaign', 'Ad Spend', 'Prev Spend', 'WoW Δ%', 'Ad Sales', 'Prev Ad Sales', 'ACoS', 'ROAS', 'Impressions'].map((h) => (
-                            <th key={h} className={`${h === 'Campaign' ? 'text-left' : 'text-right'} px-3.5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.8px] text-gray-400 whitespace-nowrap`}>{h}</th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {rows.map(({ curr: c, prev: p }) => {
-                          const spendWowVal = wowPct(c.adSpend, p?.adSpend ?? 0);
-                          const spendWow = wowArrow(spendWowVal, true);
-                          return (
-                            <tr key={c.campaign} className="border-b border-white/[0.05] hover:bg-white/[0.02] transition-colors last:border-0">
-                              <td className="px-3.5 py-2.5 font-sans font-medium text-[13px] text-white">{c.campaign}</td>
-                              <td className="px-3.5 py-2.5 text-right font-mono text-[#E8EDF5]">{fmtDollar(c.adSpend)}</td>
-                              <td className="px-3.5 py-2.5 text-right font-mono text-gray-400">{p ? fmtDollar(p.adSpend) : '—'}</td>
-                              <td className={`px-3.5 py-2.5 text-right font-mono font-semibold ${spendWow.cls}`}>{spendWowVal === null ? '—' : `${spendWow.symbol} ${Math.abs(spendWowVal * 100).toFixed(0)}%`}</td>
-                              <td className="px-3.5 py-2.5 text-right font-mono text-[#E8EDF5]">{c.adSales > 0 ? fmtDollar(c.adSales) : '—'}</td>
-                              <td className="px-3.5 py-2.5 text-right font-mono text-gray-400">{p && p.adSales > 0 ? fmtDollar(p.adSales) : '—'}</td>
-                              <td className={`px-3.5 py-2.5 text-right font-mono font-semibold ${acosColor(c.acos)}`}>{c.acos !== null && c.acos > 0 ? fmtPct(c.acos) : '—'}</td>
-                              <td className="px-3.5 py-2.5 text-right font-mono text-[#E8EDF5]">{fmtRoas(c.roas)}</td>
-                              <td className="px-3.5 py-2.5 text-right font-mono text-gray-400">{c.impressions > 0 ? c.impressions.toLocaleString('en-US') : '—'}</td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
+                  <SortableTable
+                    columns={[
+                      { key: 'campaign', label: 'Campaign' },
+                      { key: 'adSpend', label: 'Ad Spend', align: 'right', type: 'currency' },
+                      { key: 'prevSpend', label: 'Prev Spend', align: 'right', type: 'currency' },
+                      { key: 'spendWow', label: 'WoW Δ%', align: 'right', type: 'percent' },
+                      { key: 'adSales', label: 'Ad Sales', align: 'right', type: 'currency' },
+                      { key: 'prevAdSales', label: 'Prev Ad Sales', align: 'right', type: 'currency' },
+                      { key: 'acos', label: 'ACoS', align: 'right', type: 'percent' },
+                      { key: 'roas', label: 'ROAS', align: 'right', type: 'roas' },
+                      { key: 'impressions', label: 'Impressions', align: 'right', type: 'number' },
+                    ]}
+                    rows={rows.map(({ curr: c, prev: p }) => ({
+                      rowId: c.campaign,
+                      campaign: c.campaign,
+                      adSpend: c.adSpend,
+                      prevSpend: p?.adSpend ?? 0,
+                      spendWow: wowPct(c.adSpend, p?.adSpend ?? 0),
+                      adSales: c.adSales,
+                      prevAdSales: p?.adSales ?? 0,
+                      acos: c.acos,
+                      roas: c.roas,
+                      impressions: c.impressions,
+                    }))}
+                    rowKey="rowId"
+                    defaultSortKey="adSpend"
+                    defaultSortDir="desc"
+                  />
                 </div>
               );
             })() : null
@@ -461,7 +460,7 @@ export default async function ElevatePage() {
         </div>
 
         {/* ── NOTES ──────────────────────────────────────────── */}
-        <NotesSection company="elevate" />
+        <NotesSection company="elevate" initialNotes={notes} />
 
         {/* ── FOOTER ─────────────────────────────────────────── */}
         <footer className="mt-12 pt-5 border-t border-white/[0.08] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 font-mono text-[11px] text-gray-500">

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { withBasePath } from '@/lib/basePath';
 
 interface UploadBarProps {
-  company: 'rpd-walmart' | 'elevate' | 'rpd-hd';
+  company: 'rpd-walmart' | 'elevate' | 'rpd-hd' | 'lustroware' | 'somarsh';
 }
 
 interface UploadResponse {
@@ -21,12 +21,38 @@ export default function UploadBar({ company }: UploadBarProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [status, setStatus] = useState<'idle' | 'uploading' | 'success' | 'warning' | 'error'>('idle');
   const [message, setMessage] = useState('');
+  const [isDragActive, setIsDragActive] = useState(false);
 
-  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0] ?? null;
+  function setFile(file: File | null) {
     setSelectedFile(file);
     setStatus('idle');
     setMessage('');
+  }
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0] ?? null;
+    setFile(file);
+  }
+
+  function handleDragOver(e: React.DragEvent<HTMLLabelElement>) {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragActive(true);
+  }
+
+  function handleDragLeave(e: React.DragEvent<HTMLLabelElement>) {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragActive(false);
+  }
+
+  function handleDrop(e: React.DragEvent<HTMLLabelElement>) {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragActive(false);
+    const file = e.dataTransfer.files?.[0] ?? null;
+    if (!file) return;
+    setFile(file);
   }
 
   async function handleUpload() {
@@ -89,7 +115,16 @@ export default function UploadBar({ company }: UploadBarProps) {
         Data
       </div>
 
-      <label className="flex items-center gap-2 cursor-pointer">
+      <label
+        className={`flex items-center gap-2 cursor-pointer rounded border px-2 py-1 transition-colors ${
+          isDragActive
+            ? 'border-[#FFC220]/70 bg-[#FFC220]/10'
+            : 'border-transparent'
+        }`}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
         <input
           ref={inputRef}
           type="file"
@@ -98,7 +133,7 @@ export default function UploadBar({ company }: UploadBarProps) {
           className="hidden"
         />
         <span className="px-3 py-1.5 text-[12px] font-medium rounded bg-dash-card2 border border-white/[0.1] text-gray-300 hover:border-white/20 hover:text-white transition-colors">
-          {selectedFile ? selectedFile.name : 'Choose Excel file…'}
+          {selectedFile ? selectedFile.name : 'Choose or drop Excel file…'}
         </span>
       </label>
 

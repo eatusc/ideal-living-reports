@@ -96,6 +96,7 @@ Data layout: headers at row 10 (0-indexed), data from row 11 onward. Week summar
 ## User Preferences
 
 - **Apply changes across all reports by default.** When a UI or data change is requested for one report (`/rpd-walmart`, `/elevate`, `/rpd-hd`), apply it to all three unless the request is clearly specific to one client. If it's ambiguous whether a change makes sense for the other reports, ask first before applying.
+- **Keep `progress.md` updated after each code change.** Use one concise line per update.
 
 ## Coding Conventions
 
