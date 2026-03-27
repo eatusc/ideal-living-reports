@@ -119,12 +119,12 @@ export default async function SoMarshPage() {
 
   if (parseError || !data) {
     return (
-      <main className="min-h-screen px-4 sm:px-6 py-10">
+      <main className="report-redesign min-h-screen bg-slate-50 px-4 sm:px-6 py-10">
         <div className="max-w-[1200px] mx-auto">
           <UploadBar company="somarsh" />
-          <div className="bg-amber-900/20 border border-amber-500/30 rounded-lg p-6 text-amber-300">
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-6 text-amber-900">
             <p className="font-semibold mb-1">No data file found</p>
-            <p className="text-[13px] text-amber-400/80">{parseError ?? 'Upload an Excel file to generate the report.'}</p>
+            <p className="text-[13px] text-amber-700">{parseError ?? 'Upload an Excel file to generate the report.'}</p>
           </div>
           <NotesSection company="somarsh" initialNotes={notes} />
         </div>
@@ -204,16 +204,19 @@ export default async function SoMarshPage() {
   }));
 
   return (
-    <main className="min-h-screen px-4 sm:px-6 py-10">
+    <main className="report-redesign min-h-screen bg-slate-50 px-4 sm:px-6 py-10">
       <div className="max-w-[1200px] mx-auto">
         <UploadBar company="somarsh" />
 
         <div className="flex gap-3 mb-4 text-[11px] font-mono">
           <span className="text-gray-600">Reports:</span>
+          <Link href="/" className="text-blue-300 hover:text-blue-200 transition-colors">Home</Link>
           <Link href="/aceteam" className="text-blue-300 hover:text-blue-200 transition-colors">/aceteam</Link>
           <Link href="/elevate" className="text-blue-300 hover:text-blue-200 transition-colors">/elevate</Link>
           <Link href="/lustroware" className="text-blue-300 hover:text-blue-200 transition-colors">/lustroware</Link>
           <span className="text-[#FFC220] font-semibold">/somarsh</span>
+          <Link href="/rpd-walmart" className="text-blue-300 hover:text-blue-200 transition-colors">/rpd-walmart</Link>
+          <Link href="/rpd-hd" className="text-blue-300 hover:text-blue-200 transition-colors">/rpd-hd</Link>
         </div>
 
         <header className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-10 pb-6 border-b border-white/[0.08]">

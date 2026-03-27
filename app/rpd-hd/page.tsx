@@ -250,12 +250,12 @@ export default async function RpdHdPage() {
 
   if (parseError || !data) {
     return (
-      <main className="min-h-screen px-4 sm:px-6 py-10">
+      <main className="report-redesign min-h-screen bg-slate-50 px-4 sm:px-6 py-10">
         <div className="max-w-[1100px] mx-auto">
           <UploadBar company="rpd-hd" />
-          <div className="bg-amber-900/20 border border-amber-500/30 rounded-lg p-6 text-amber-300">
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-6 text-amber-900">
             <p className="font-semibold mb-1">No data file found</p>
-            <p className="text-[13px] text-amber-400/80">{parseError ?? 'Upload an Excel file to generate the report.'}</p>
+            <p className="text-[13px] text-amber-700">{parseError ?? 'Upload an Excel file to generate the report.'}</p>
           </div>
           <NotesSection company="rpd-hd" initialNotes={hdNotes} />
         </div>
@@ -386,7 +386,7 @@ export default async function RpdHdPage() {
   });
 
   return (
-    <main className="min-h-screen px-4 sm:px-6 py-10">
+    <main className="report-redesign min-h-screen bg-slate-50 px-4 sm:px-6 py-10">
       <div className="max-w-[1100px] mx-auto">
 
         <UploadBar company="rpd-hd" />

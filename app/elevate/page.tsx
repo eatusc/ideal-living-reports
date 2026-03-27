@@ -11,6 +11,8 @@ import TrendChart, { type ChartMetric, type ChartDataPoint, type ChartNote } fro
 import ImpactView from '@/components/ImpactView';
 import SortableTable from '@/components/SortableTable';
 import { readNotes, type Note } from '@/lib/notes';
+import AsanaReportsSection from '@/components/AsanaReportsSection';
+import { fetchAsanaTaskBundle, type AsanaTaskBundle } from '@/lib/asana';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -25,7 +27,7 @@ function wowArrow(pct: number | null, invertGood = false) {
   return {
     symbol: up ? '↑' : '↓',
     label: `${up ? '+' : ''}${(pct * 100).toFixed(1)}%`,
-    cls: good ? 'text-green-400' : 'text-red-400',
+    cls: good ? 'text-green-600' : 'text-red-600',
   };
 }
 
@@ -34,14 +36,14 @@ function acosWowArrow(current: number | null, prev: number | null) {
   const delta = current - prev;
   const pctChange = prev !== 0 ? delta / prev : null;
   const label = pctChange !== null ? `${delta >= 0 ? '+' : ''}${(pctChange * 100).toFixed(1)}%` : '—';
-  return { symbol: delta >= 0 ? '↑' : '↓', label, cls: delta <= 0 ? 'text-green-400' : 'text-amber-400' };
+  return { symbol: delta >= 0 ? '↑' : '↓', label, cls: delta <= 0 ? 'text-green-600' : 'text-amber-600' };
 }
 
 function acosColor(acos: number | null): string {
   if (acos === null) return 'text-gray-500';
-  if (acos < 0.35) return 'text-green-400';
-  if (acos <= 0.55) return 'text-amber-400';
-  return 'text-red-400';
+  if (acos < 0.35) return 'text-green-600';
+  if (acos <= 0.55) return 'text-amber-600';
+  return 'text-red-600';
 }
 
 // ─── Wins & Alerts ───────────────────────────────────────────────────────────
@@ -80,7 +82,7 @@ function generateElevateWinsAlerts(
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <div className="text-[11px] font-bold uppercase tracking-[1.5px] text-[#FFC220] mb-4 mt-9 first:mt-0">
+    <div className="text-[11px] font-bold uppercase tracking-[1.5px] text-amber-600 mb-4 mt-9 first:mt-0">
       {children}
     </div>
   );
@@ -89,11 +91,11 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 function PlatformDivider({ title, color }: { title: string; color: string }) {
   return (
     <div className="flex items-center gap-3 mt-10 mb-2">
-      <div className="flex-1 h-px bg-white/[0.06]" />
+      <div className="flex-1 h-px bg-slate-200" />
       <span className="text-[11px] font-bold uppercase tracking-[2px] px-3 py-1 rounded-full border" style={{ color, borderColor: `${color}40` }}>
         {title}
       </span>
-      <div className="flex-1 h-px bg-white/[0.06]" />
+      <div className="flex-1 h-px bg-slate-200" />
     </div>
   );
 }
@@ -109,15 +111,15 @@ interface ScoreCardProps {
 function ScoreCard({ label, value, prevLabel, wow, topColor }: ScoreCardProps) {
   return (
     <div
-      className="relative bg-dash-card border border-white/[0.08] rounded-lg p-4 overflow-hidden"
+      className="relative bg-white border border-slate-200 rounded p-3 overflow-hidden hover:shadow-sm transition-shadow"
       style={{ borderTop: `2px solid ${topColor ?? '#374151'}` }}
     >
-      <div className="text-[10px] font-medium uppercase tracking-[0.8px] text-gray-400 mb-2">{label}</div>
-      <div className="font-mono text-[22px] font-bold text-white tracking-tight leading-none">{value}</div>
+      <div className="text-[10px] font-semibold uppercase tracking-[0.8px] text-slate-500 mb-1">{label}</div>
+      <div className="font-mono text-[22px] font-bold text-slate-900 tracking-tight leading-none">{value}</div>
       <div className={`font-mono text-[11px] mt-1.5 flex items-center gap-1 ${wow.cls}`}>
         <span>{wow.symbol}</span><span>{wow.label} WoW</span>
       </div>
-      <div className="font-mono text-[10px] mt-0.5 text-gray-500">{prevLabel}</div>
+      <div className="font-mono text-[10px] mt-0.5 text-slate-500">{prevLabel}</div>
     </div>
   );
 }
@@ -138,14 +140,28 @@ export default async function ElevatePage() {
   let notes: Note[] = [];
   try { notes = await readNotes('elevate'); } catch { /* ignore */ }
 
+  const asanaTaskGid =
+    process.env.ASANA_TASK_GID_ELEVATE ??
+    process.env.ASANA_TASK_GID ??
+    '1210999085613206';
+  let asanaBundle: AsanaTaskBundle | null = null;
+  let asanaError: string | null = null;
+  if (asanaTaskGid) {
+    try {
+      asanaBundle = await fetchAsanaTaskBundle(asanaTaskGid);
+    } catch (err) {
+      asanaError = err instanceof Error ? err.message : 'Failed to load Asana task';
+    }
+  }
+
   if (parseError || !data) {
     return (
-      <main className="min-h-screen px-4 sm:px-6 py-10">
-        <div className="max-w-[1100px] mx-auto">
+      <main className="report-redesign min-h-screen bg-slate-50 px-4 sm:px-6 py-10">
+        <div className="max-w-[1200px] mx-auto">
           <UploadBar company="elevate" />
-          <div className="bg-amber-900/20 border border-amber-500/30 rounded-lg p-6 text-amber-300">
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-6 text-amber-900">
             <p className="font-semibold mb-1">No data file found</p>
-            <p className="text-[13px] text-amber-400/80">{parseError ?? 'Upload an Excel file to generate the report.'}</p>
+            <p className="text-[13px] text-amber-700">{parseError ?? 'Upload an Excel file to generate the report.'}</p>
           </div>
           <NotesSection company="elevate" initialNotes={notes} />
         </div>
@@ -286,43 +302,49 @@ export default async function ElevatePage() {
   ]);
 
   return (
-    <main className="min-h-screen px-4 sm:px-6 py-10">
-      <div className="max-w-[1100px] mx-auto">
+    <main className="report-redesign min-h-screen bg-slate-50">
+      <div className="bg-white border-b border-slate-200 sticky top-0 z-10">
+        <div className="max-w-[1200px] mx-auto px-4 sm:px-6 py-4">
+          <div className="flex gap-3 mb-3 text-[11px] font-mono flex-wrap">
+            <span className="text-slate-500">Reports:</span>
+            <Link href="/" className="text-blue-700 hover:text-blue-900 transition-colors">Home</Link>
+            <Link href="/aceteam" className="text-blue-700 hover:text-blue-900 transition-colors">/aceteam</Link>
+            <span className="text-amber-700 font-semibold">/elevate</span>
+            <Link href="/lustroware" className="text-blue-700 hover:text-blue-900 transition-colors">/lustroware</Link>
+            <Link href="/somarsh" className="text-blue-700 hover:text-blue-900 transition-colors">/somarsh</Link>
+            <Link href="/rpd-walmart" className="text-blue-700 hover:text-blue-900 transition-colors">/rpd-walmart</Link>
+            <Link href="/rpd-hd" className="text-blue-700 hover:text-blue-900 transition-colors">/rpd-hd</Link>
+          </div>
+
+          <header className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 pb-1">
+            <div>
+              <div className="flex items-center gap-2.5 mb-1.5">
+                <div className="w-8 h-8 rounded-full bg-[#FF9900] flex items-center justify-center text-white font-bold text-sm leading-none select-none">
+                  E
+                </div>
+                <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+                  Elevate Beverages
+                </h1>
+              </div>
+              <p className="text-sm text-slate-600">
+                Multi-Platform Advertising &amp; Sales — Weekly Performance Report
+              </p>
+              <div className="inline-flex items-center gap-1.5 mt-2 bg-amber-100 border border-amber-200 text-amber-700 px-2.5 py-1 rounded text-[11px] font-mono">
+                ⚡ Amazon · Walmart · SEM
+              </div>
+            </div>
+            <div className="text-right font-mono text-[12px] text-slate-500">
+              <div className="text-[14px] font-semibold text-slate-900 mb-0.5">Current Week Report</div>
+              <div>Generated: {today}</div>
+              <div>{amzCurr.label}</div>
+            </div>
+          </header>
+        </div>
+      </div>
+
+      <div className="max-w-[1200px] mx-auto px-4 sm:px-6 py-6">
 
         <UploadBar company="elevate" />
-
-        <div className="flex gap-3 mb-4 text-[11px] font-mono">
-          <span className="text-gray-600">Reports:</span>
-          <Link href="/aceteam" className="text-blue-300 hover:text-blue-200 transition-colors">/aceteam</Link>
-          <span className="text-[#FFC220] font-semibold">/elevate</span>
-          <Link href="/lustroware" className="text-blue-300 hover:text-blue-200 transition-colors">/lustroware</Link>
-          <Link href="/somarsh" className="text-blue-300 hover:text-blue-200 transition-colors">/somarsh</Link>
-        </div>
-
-{/* ── HEADER ─────────────────────────────────────────── */}
-        <header className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-10 pb-6 border-b border-white/[0.08]">
-          <div>
-            <div className="flex items-center gap-2.5 mb-1.5">
-              <div className="w-8 h-8 rounded-full bg-[#FF9900] flex items-center justify-center text-white font-bold text-sm leading-none select-none">
-                E
-              </div>
-              <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
-                Elevate Beverages
-              </h1>
-            </div>
-            <p className="text-sm text-gray-400">
-              Multi-Platform Advertising &amp; Sales — Weekly Performance Report
-            </p>
-            <div className="inline-flex items-center gap-1.5 mt-2 bg-[#FF9900]/10 border border-[#FF9900]/30 text-orange-400 px-2.5 py-1 rounded text-[11px] font-mono">
-              ⚡ Amazon · Walmart · SEM
-            </div>
-          </div>
-          <div className="text-right font-mono text-[12px] text-gray-400">
-            <div className="text-[14px] font-semibold text-[#E8EDF5] mb-0.5">Current Week Report</div>
-            <div>Generated: {today}</div>
-            <div>{amzCurr.label}</div>
-          </div>
-        </header>
 
         {/* ══════════════════════════════════════════════════════ */}
         <PlatformDivider title="Amazon" color="#FF9900" />
@@ -396,7 +418,7 @@ export default async function ElevatePage() {
                 .sort((a, b) => b.adSpend - a.adSpend)
                 .map((c) => ({ curr: c, prev: prevMap.get(c.campaign) ?? null }));
               return (
-                <div className="bg-dash-card border border-white/[0.08] rounded-lg overflow-hidden mb-2">
+                <div className="bg-white border border-slate-200 rounded overflow-hidden mb-2">
                   <SortableTable
                     columns={[
                       { key: 'campaign', label: 'Campaign' },
@@ -436,31 +458,31 @@ export default async function ElevatePage() {
         {/* ── WINS & ALERTS ──────────────────────────────────── */}
         <SectionTitle>🔍 Wins &amp; Alerts</SectionTitle>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="bg-dash-card border border-white/[0.08] border-l-[3px] border-l-green-400 rounded-lg p-5">
-            <div className="text-[11px] font-bold uppercase tracking-[0.8px] text-green-400 mb-4">🟢 Wins This Week</div>
+          <div className="bg-green-50 border border-green-200 border-l-[3px] border-l-green-500 rounded-lg p-5">
+            <div className="text-[11px] font-bold uppercase tracking-[0.8px] text-green-700 mb-4">🟢 Wins This Week</div>
             {wins.length === 0 ? (
-              <p className="text-[13px] text-gray-500">No wins detected this week.</p>
+              <p className="text-[13px] text-slate-500">No wins detected this week.</p>
             ) : (
               <ul className="space-y-3">
                 {wins.map((w, i) => (
                   <li key={i} className="flex gap-2.5 text-[13px] leading-relaxed">
-                    <div className="mt-1.5 w-1.5 h-1.5 rounded-full bg-green-400 flex-shrink-0" />
-                    <div><strong className="text-white">{w.platform}</strong>{' — '}<span className="text-[#C8D5E8]">{w.message}</span></div>
+                    <div className="mt-1.5 w-1.5 h-1.5 rounded-full bg-green-600 flex-shrink-0" />
+                    <div><strong className="text-slate-900">{w.platform}</strong>{' — '}<span className="text-slate-700">{w.message}</span></div>
                   </li>
                 ))}
               </ul>
             )}
           </div>
-          <div className="bg-dash-card border border-white/[0.08] border-l-[3px] border-l-red-500 rounded-lg p-5">
-            <div className="text-[11px] font-bold uppercase tracking-[0.8px] text-red-400 mb-4">🔴 Watch / Action Required</div>
+          <div className="bg-red-50 border border-red-200 border-l-[3px] border-l-red-500 rounded-lg p-5">
+            <div className="text-[11px] font-bold uppercase tracking-[0.8px] text-red-700 mb-4">🔴 Watch / Action Required</div>
             {alerts.length === 0 ? (
-              <p className="text-[13px] text-gray-500">No alerts detected this week.</p>
+              <p className="text-[13px] text-slate-500">No alerts detected this week.</p>
             ) : (
               <ul className="space-y-3">
                 {alerts.map((a, i) => (
                   <li key={i} className="flex gap-2.5 text-[13px] leading-relaxed">
-                    <div className="mt-1.5 w-1.5 h-1.5 rounded-full bg-red-400 flex-shrink-0" />
-                    <div><strong className="text-white">{a.platform}</strong>{' — '}<span className="text-[#C8D5E8]">{a.message}</span></div>
+                    <div className="mt-1.5 w-1.5 h-1.5 rounded-full bg-red-600 flex-shrink-0" />
+                    <div><strong className="text-slate-900">{a.platform}</strong>{' — '}<span className="text-slate-700">{a.message}</span></div>
                   </li>
                 ))}
               </ul>
@@ -469,10 +491,13 @@ export default async function ElevatePage() {
         </div>
 
         {/* ── NOTES ──────────────────────────────────────────── */}
+        <AsanaReportsSection data={asanaBundle} error={asanaError} />
+
+        {/* ── NOTES ──────────────────────────────────────────── */}
         <NotesSection company="elevate" initialNotes={notes} />
 
         {/* ── FOOTER ─────────────────────────────────────────── */}
-        <footer className="mt-12 pt-5 border-t border-white/[0.08] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 font-mono text-[11px] text-gray-500">
+        <footer className="mt-12 pt-5 border-t border-slate-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 font-mono text-[11px] text-slate-500">
           <span>Elevate Beverages · Multi-Platform Report · Generated {today}</span>
           <span>Sources: Amazon Seller Central · Walmart Seller Center · SEM Dashboard</span>
         </footer>

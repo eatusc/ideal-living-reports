@@ -122,3 +122,83 @@ textarea::placeholder {
   background: rgba(71, 101, 131, 0.26);
   border-radius: 2px;
 }
+
+/* Report redesign scope (light, clean card/table system) */
+.report-redesign .bg-dash-card {
+  background: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+
+.report-redesign .bg-dash-card2 {
+  background: #f8fafc !important;
+}
+
+.report-redesign .text-white,
+.report-redesign .text-\[\#E8EDF5\] {
+  color: #0f172a !important;
+}
+
+.report-redesign .text-\[\#C8D5E8\] {
+  color: #334155 !important;
+}
+
+.report-redesign .text-orange-200,
+.report-redesign .text-blue-200 {
+  color: #1e293b !important;
+}
+
+.report-redesign .text-gray-300,
+.report-redesign .text-gray-400,
+.report-redesign .text-slate-300,
+.report-redesign .text-slate-400 {
+  color: #64748b !important;
+}
+
+.report-redesign .text-gray-500,
+.report-redesign .text-gray-600,
+.report-redesign .text-slate-500,
+.report-redesign .text-slate-600 {
+  color: #64748b !important;
+}
+
+.report-redesign .text-blue-300,
+.report-redesign .text-blue-400 {
+  color: #1d4ed8 !important;
+}
+
+.report-redesign .hover\:text-blue-200:hover,
+.report-redesign .hover\:text-blue-300:hover {
+  color: #1e3a8a !important;
+}
+
+.report-redesign .text-green-400 {
+  color: #16a34a !important;
+}
+
+.report-redesign .text-red-400 {
+  color: #dc2626 !important;
+}
+
+.report-redesign .text-amber-400 {
+  color: #d97706 !important;
+}
+
+.report-redesign [class*='border-white/['],
+.report-redesign [class*='border-white/'] {
+  border-color: #e2e8f0 !important;
+}
+
+.report-redesign [class*='divide-white/['] > :not([hidden]) ~ :not([hidden]) {
+  border-color: #e2e8f0 !important;
+}
+
+.report-redesign [class*='bg-white/[0.02]'],
+.report-redesign [class*='bg-white/[0.01]'] {
+  background-color: #f8fafc !important;
+}
+
+.report-redesign .bg-\[\#0D1220\] {
+  background-color: #f8fafc !important;
+}
