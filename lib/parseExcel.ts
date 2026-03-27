@@ -1,5 +1,6 @@
 import * as XLSX from 'xlsx';
 import { getExcelBuffer } from '@/lib/blob';
+import { resolveSheetName } from '@/lib/uploadExcel';
 
 // Re-export types and utilities from client-safe module
 export type { BrandData, WeekData, DashboardData, SemCampaignData, SemWeekData, SemDashboardData } from '@/lib/formatUtils';
@@ -38,10 +39,11 @@ export function safeRate(val: unknown): number | null {
 export async function parseDashboardData(): Promise<DashboardData> {
   const buffer = await getExcelBuffer('rpd-walmart');
   const wb = XLSX.read(buffer, { type: 'buffer' });
-  const ws = wb.Sheets['WALMART_weekly_reporting_2026-B'];
+  const mainSheetName = resolveSheetName('WALMART_weekly_reporting_2026-B', wb.SheetNames);
+  const ws = mainSheetName ? wb.Sheets[mainSheetName] : undefined;
 
   if (!ws) {
-    throw new Error('Sheet "WALMART_weekly_reporting_2026-B" not found in Excel file');
+    throw new Error('Sheet matching "WALMART_weekly_reporting_2026-B" not found in Excel file');
   }
 
   // Parse as array of arrays; defval: null fills empty cells
@@ -133,7 +135,8 @@ export async function parseDashboardData(): Promise<DashboardData> {
 export async function parseSemData(): Promise<SemDashboardData> {
   const buffer = await getExcelBuffer('rpd-walmart');
   const wb = XLSX.read(buffer, { type: 'buffer' });
-  const ws = wb.Sheets['SEM Campaigns Data 2026'];
+  const semSheetName = resolveSheetName('SEM Campaigns Data 2026', wb.SheetNames);
+  const ws = semSheetName ? wb.Sheets[semSheetName] : undefined;
 
   const empty: SemWeekData = {
     adSpend: 0, adSales: 0, acos: null, roas: null, impressions: 0, campaigns: [],
@@ -204,4 +207,3 @@ export async function parseSemData(): Promise<SemDashboardData> {
     previousWeek: previousWeek ?? empty,
   };
 }
-
