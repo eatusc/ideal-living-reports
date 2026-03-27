@@ -17,3 +17,4 @@ Format: `YYYY-MM-DD: change; change; change`
 2026-03-26: added clickable sort (asc/desc) on all SoMarsh table columns via reusable `SortableTable` client component.
 2026-03-26: enabled column sorting across remaining report tables (Lustroware, Elevate, RPD Walmart, RPD HD), including expandable trend/breakdown tables; added default sort options to `SortableTable`.
 2026-03-26: fixed SoMarsh `View Cause` tooltip clipping at table edge by anchoring tooltip leftward (`right-0`), raising z-index, and allowing overflow on the daily trend table container.
+2026-03-26: added ACE cross-report nav links above each ACE report page (`/elevate`, `/lustroware`, `/somarsh`) to match the inter-report navigation pattern.

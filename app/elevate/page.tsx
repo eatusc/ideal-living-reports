@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic';
 
+import Link from 'next/link';
 import { parseElevateData } from '@/lib/parseElevate';
 import { wowPct, fmtDollar, fmtPct, fmtRoas } from '@/lib/parseExcel';
 import UploadBar from '@/components/UploadBar';
@@ -289,6 +290,14 @@ export default async function ElevatePage() {
       <div className="max-w-[1100px] mx-auto">
 
         <UploadBar company="elevate" />
+
+        <div className="flex gap-3 mb-4 text-[11px] font-mono">
+          <span className="text-gray-600">Reports:</span>
+          <Link href="/aceteam" className="text-blue-300 hover:text-blue-200 transition-colors">/aceteam</Link>
+          <span className="text-[#FFC220] font-semibold">/elevate</span>
+          <Link href="/lustroware" className="text-blue-300 hover:text-blue-200 transition-colors">/lustroware</Link>
+          <Link href="/somarsh" className="text-blue-300 hover:text-blue-200 transition-colors">/somarsh</Link>
+        </div>
 
 {/* ── HEADER ─────────────────────────────────────────── */}
         <header className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-10 pb-6 border-b border-white/[0.08]">

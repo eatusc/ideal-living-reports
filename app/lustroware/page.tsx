@@ -144,7 +144,9 @@ export default async function LustrowarePage() {
         <div className="flex gap-3 mb-4 text-[11px] font-mono">
           <span className="text-gray-600">Reports:</span>
           <Link href="/aceteam" className="text-blue-300 hover:text-blue-200 transition-colors">/aceteam</Link>
-          <span className="text-[#FFC220] font-semibold">Lustroware</span>
+          <Link href="/elevate" className="text-blue-300 hover:text-blue-200 transition-colors">/elevate</Link>
+          <span className="text-[#FFC220] font-semibold">/lustroware</span>
+          <Link href="/somarsh" className="text-blue-300 hover:text-blue-200 transition-colors">/somarsh</Link>
         </div>
 
         <header className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-10 pb-6 border-b border-white/[0.08]">
