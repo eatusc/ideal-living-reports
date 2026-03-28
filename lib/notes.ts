@@ -17,7 +17,7 @@ interface DbNote {
   created_at: string;
 }
 
-const VALID_COMPANIES = ['rpd-walmart', 'elevate', 'rpd-hd', 'lustroware', 'somarsh'] as const;
+const VALID_COMPANIES = ['rpd-walmart', 'elevate', 'rpd-hd', 'lustroware', 'somarsh', 'brand-ops'] as const;
 type Company = typeof VALID_COMPANIES[number];
 
 function toNote(row: DbNote): Note {

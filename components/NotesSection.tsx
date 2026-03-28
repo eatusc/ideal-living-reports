@@ -11,7 +11,7 @@ interface Note {
 }
 
 interface NotesSectionProps {
-  company: 'rpd-walmart' | 'elevate' | 'rpd-hd' | 'lustroware' | 'somarsh';
+  company: 'rpd-walmart' | 'elevate' | 'rpd-hd' | 'lustroware' | 'somarsh' | 'brand-ops';
   initialNotes?: Note[];
 }
 

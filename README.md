@@ -9,6 +9,7 @@ A local Next.js dashboard for weekly advertising and sales performance reports a
 | `/rpd-walmart` | Ideal Living — Walmart Ads | `data/rpd/latest.xlsx` |
 | `/elevate` | Elevate Beverages — Amazon + Walmart + SEM | `data/elevate/latest.xlsx` |
 | `/rpd-hd` | RPD Home Depot — Orange Access | `data/rpd-hd/latest.xlsx` |
+| `/brand-ops` | Cross-brand action + risk board | Aggregates all report parsers |
 
 All reports are PIN-protected (see Authentication below).
 
@@ -20,6 +21,16 @@ npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000). Navigate to a report URL to begin.
+
+## Supabase Project Binding
+
+This project directory is bound to Supabase project ref `gwdbvwghamrwcfqksmhw`.
+
+- Expected URL: `https://gwdbvwghamrwcfqksmhw.supabase.co`
+- `lib/supabase.ts` enforces this ref and will throw if `NEXT_PUBLIC_SUPABASE_URL` points to another project.
+- `.mcp.json` should also use `--project-ref gwdbvwghamrwcfqksmhw`.
+
+If MCP reports a different project URL, reconnect/restart MCP before applying SQL migrations.
 
 ## Authentication
 
@@ -68,17 +79,23 @@ For Elevate and RPD-HD: the most recent two week summary rows (any row with "Wee
 app/
 ├── page.tsx              # Home (public, no PIN needed)
 ├── pin/page.tsx          # PIN entry page
+├── brand-ops/page.tsx    # Cross-brand action board + editable ACoS goals
 ├── rpd-walmart/page.tsx  # RPD Walmart report
 ├── elevate/page.tsx      # Elevate Beverages report
 ├── rpd-hd/page.tsx       # RPD Home Depot report
 ├── api/
 │   ├── auth/route.ts     # POST: validate PIN, set cookie
+│   ├── acos-goals/route.ts # GET + POST ACoS goals
 │   ├── upload/[company]/ # POST: file upload handler
 │   └── notes/[company]/  # GET + POST notes
 components/
 ├── UploadBar.tsx         # File upload UI
-└── NotesSection.tsx      # Notes display + add form
+├── NotesSection.tsx      # Notes display + add form
+└── BrandOpsBoard.tsx     # Cross-brand filters, goals, and signals UI
 lib/
+├── brandOps.ts           # Cross-brand signal aggregation
+├── brandOpsConfig.ts     # Brand/channel keys and labels
+├── acosGoals.ts          # Supabase ACoS goal storage helpers
 ├── parseExcel.ts         # RPD Walmart parser + shared utilities
 ├── parseElevate.ts       # Elevate Beverages parser
 ├── parseRpdHd.ts         # RPD Home Depot parser
@@ -98,4 +115,5 @@ middleware.ts             # PIN cookie auth guard
 - **Tailwind CSS 3**
 - **xlsx** npm package for server-side Excel parsing
 - **No database** — data stored as Excel + JSON files in `data/`
+- **Supabase** for notes + editable cross-brand ACoS goals
 - Runs locally via `npm run dev`
