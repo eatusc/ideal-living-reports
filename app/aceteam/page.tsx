@@ -13,6 +13,7 @@ export default function AceTeamPage() {
         </p>
         <div className="mt-6 text-[12px] font-mono space-y-2">
           <Link href="/" className="block text-blue-700 hover:text-blue-900 transition-colors">Home</Link>
+          <Link href="/brand-ops" className="block text-blue-700 hover:text-blue-900 transition-colors">/brand-ops</Link>
           <Link href="/rpd-walmart" className="block text-blue-700 hover:text-blue-900 transition-colors">/rpd-walmart</Link>
           <Link href="/rpd-hd" className="block text-blue-700 hover:text-blue-900 transition-colors">/rpd-hd</Link>
           <Link href="/elevate" className="block text-blue-700 hover:text-blue-900 transition-colors">/elevate</Link>

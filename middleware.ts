@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const PROTECTED_PREFIXES = ['/rpd-walmart', '/elevate', '/rpd-hd', '/aceteam', '/lustroware', '/somarsh'];
+const PROTECTED_PREFIXES = ['/rpd-walmart', '/elevate', '/rpd-hd', '/aceteam', '/lustroware', '/somarsh', '/brand-ops'];
 
 export function middleware(request: NextRequest) {
   const { pathname, basePath } = request.nextUrl;
@@ -25,5 +25,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/', '/rpd-walmart/:path*', '/elevate/:path*', '/rpd-hd/:path*', '/aceteam/:path*', '/lustroware/:path*', '/somarsh/:path*'],
+  matcher: ['/', '/rpd-walmart/:path*', '/elevate/:path*', '/rpd-hd/:path*', '/aceteam/:path*', '/lustroware/:path*', '/somarsh/:path*', '/brand-ops/:path*'],
 };
