@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 
-type CellType = 'text' | 'number' | 'currency' | 'percent' | 'roas' | 'peak_reason';
+type CellType = 'text' | 'number' | 'currency' | 'percent' | 'roas' | 'peak_reason' | 'asin_link';
 
 interface ColumnDef {
   key: string;
@@ -18,6 +18,7 @@ interface SortableTableProps {
   maxRows?: number;
   defaultSortKey?: string;
   defaultSortDir?: 'asc' | 'desc';
+  pageSize?: number;
 }
 
 function fmtMoney(v: number): string {
@@ -60,9 +61,11 @@ export default function SortableTable({
   maxRows,
   defaultSortKey,
   defaultSortDir = 'desc',
+  pageSize,
 }: SortableTableProps) {
   const [sortKey, setSortKey] = useState<string>(defaultSortKey ?? columns[0]?.key ?? '');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>(defaultSortDir);
+  const [page, setPage] = useState(1);
 
   const sortedRows = useMemo(() => {
     const next = [...rows].sort((a, b) => compareValues(a[sortKey], b[sortKey]));
@@ -70,13 +73,25 @@ export default function SortableTable({
     return typeof maxRows === 'number' ? next.slice(0, maxRows) : next;
   }, [rows, sortKey, sortDir, maxRows]);
 
+  const totalRows = sortedRows.length;
+  const safePageSize = typeof pageSize === 'number' && pageSize > 0 ? Math.floor(pageSize) : null;
+  const totalPages = safePageSize ? Math.max(1, Math.ceil(totalRows / safePageSize)) : 1;
+  const currentPage = Math.min(page, totalPages);
+  const visibleRows = useMemo(() => {
+    if (!safePageSize) return sortedRows;
+    const start = (currentPage - 1) * safePageSize;
+    return sortedRows.slice(start, start + safePageSize);
+  }, [sortedRows, safePageSize, currentPage]);
+
   function onSort(colKey: string) {
     if (sortKey === colKey) {
       setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+      setPage(1);
       return;
     }
     setSortKey(colKey);
     setSortDir('desc');
+    setPage(1);
   }
 
   return (
@@ -104,7 +119,7 @@ export default function SortableTable({
           </tr>
         </thead>
         <tbody>
-          {sortedRows.map((r) => (
+          {visibleRows.map((r) => (
             <tr key={String(r[rowKey] ?? Math.random())} className="border-b border-white/[0.05] last:border-0 hover:bg-white/[0.02] transition-colors">
               {columns.map((c) => {
                 const val = r[c.key];
@@ -130,6 +145,31 @@ export default function SortableTable({
                     </td>
                   );
                 }
+                if (c.type === 'asin_link') {
+                  const asin = typeof val === 'string' ? val.trim() : '';
+                  const looksLikeAsin = /^[A-Z0-9]{10}$/i.test(asin);
+                  if (!looksLikeAsin) {
+                    return (
+                      <td key={c.key} className={`${c.align === 'right' ? 'text-right' : 'text-left'} px-3.5 py-2 font-mono text-[#E8EDF5]`}>
+                        {asin || '—'}
+                      </td>
+                    );
+                  }
+
+                  const href = `https://www.amazon.com/dp/${asin.toUpperCase()}`;
+                  return (
+                    <td key={c.key} className={`${c.align === 'right' ? 'text-right' : 'text-left'} px-3.5 py-2 font-mono text-[#E8EDF5]`}>
+                      <a
+                        href={href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-300 hover:text-blue-200 underline underline-offset-2"
+                      >
+                        {asin.toUpperCase()}
+                      </a>
+                    </td>
+                  );
+                }
                 return (
                   <td key={c.key} className={`${c.align === 'right' ? 'text-right' : 'text-left'} px-3.5 py-2 font-mono text-[#E8EDF5]`}>
                     {renderCell(c.type ?? 'text', val)}
@@ -140,6 +180,31 @@ export default function SortableTable({
           ))}
         </tbody>
       </table>
+      {safePageSize && totalPages > 1 && (
+        <div className="flex items-center justify-between gap-2 px-3.5 py-2 border-t border-white/[0.08] text-[11px] font-mono text-gray-400">
+          <span>
+            Page {currentPage} / {totalPages} · {totalRows.toLocaleString('en-US')} rows
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage <= 1}
+              className="px-2 py-1 rounded border border-white/[0.12] disabled:opacity-40 disabled:cursor-not-allowed hover:bg-white/[0.04]"
+            >
+              Prev
+            </button>
+            <button
+              type="button"
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={currentPage >= totalPages}
+              className="px-2 py-1 rounded border border-white/[0.12] disabled:opacity-40 disabled:cursor-not-allowed hover:bg-white/[0.04]"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

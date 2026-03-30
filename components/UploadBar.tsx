@@ -159,6 +159,7 @@ export default function UploadBar({ company }: UploadBarProps) {
         }
         setSelectedFile(null);
         if (inputRef.current) inputRef.current.value = '';
+        router.refresh();
       } else {
         setStatus('error');
         setMessage(data.error ?? 'Upload failed');
@@ -292,6 +293,10 @@ export default function UploadBar({ company }: UploadBarProps) {
   }, []);
 
   const showReload = status === 'success' || status === 'warning';
+  const fileAccept = company === 'somarsh' ? '.xlsx,.xls,.csv' : '.xlsx,.xls';
+  const chooseLabel = company === 'somarsh'
+    ? (selectedFile ? selectedFile.name : 'Choose or drop Excel/BusinessReport CSV…')
+    : (selectedFile ? selectedFile.name : 'Choose or drop Excel file…');
 
   return (
     <div className="mb-6 bg-dash-card border border-white/[0.08] rounded-lg px-4 py-3">
@@ -313,12 +318,12 @@ export default function UploadBar({ company }: UploadBarProps) {
           <input
             ref={inputRef}
             type="file"
-            accept=".xlsx,.xls"
+            accept={fileAccept}
             onChange={handleFileChange}
             className="hidden"
           />
           <span className="px-3 py-1.5 text-[12px] font-medium rounded bg-dash-card2 border border-white/[0.1] text-gray-300 hover:border-white/20 hover:text-white transition-colors">
-            {selectedFile ? selectedFile.name : 'Choose or drop Excel file…'}
+            {chooseLabel}
           </span>
         </label>
 

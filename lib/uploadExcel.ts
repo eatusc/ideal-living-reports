@@ -20,6 +20,7 @@ export const EXPECTED_SHEETS: Record<string, string[]> = {
 };
 
 const XLSX_CONTENT_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+const CSV_CONTENT_TYPE = 'text/csv';
 
 function normalizeSheetName(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -155,6 +156,139 @@ export async function persistExcelBuffer(company: string, buffer: Buffer) {
     storage: 'local' as const,
     saved: `data/${dir}/latest.xlsx`,
     backup: `data/${dir}/${today}.xlsx`,
+  };
+}
+
+export function analyzeBusinessReportCsv(buffer: Buffer): {
+  totalRows: number;
+  sellingRows: number;
+  zeroRows: number;
+  summary: string;
+} {
+  const raw = buffer.toString('utf8');
+  const lines = raw.split(/\r?\n/).filter((line) => line.trim().length > 0);
+  if (lines.length < 2) {
+    return {
+      totalRows: 0,
+      sellingRows: 0,
+      zeroRows: 0,
+      summary: 'BusinessReport CSV is empty',
+    };
+  }
+
+  const parseCsvLine = (line: string): string[] => {
+    const cells: string[] = [];
+    let current = '';
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i += 1) {
+      const ch = line[i];
+      if (ch === '"') {
+        if (inQuotes && line[i + 1] === '"') {
+          current += '"';
+          i += 1;
+        } else {
+          inQuotes = !inQuotes;
+        }
+        continue;
+      }
+      if (ch === ',' && !inQuotes) {
+        cells.push(current);
+        current = '';
+        continue;
+      }
+      current += ch;
+    }
+    cells.push(current);
+    return cells;
+  };
+
+  const parseNum = (value: string): number => {
+    const normalized = value.trim().replace(/[$,%]/g, '').replace(/,/g, '');
+    if (!normalized) return 0;
+    const n = Number(normalized);
+    return Number.isFinite(n) ? n : 0;
+  };
+
+  const header = parseCsvLine(lines[0]);
+  const salesIdx = header.indexOf('Ordered Product Sales');
+  const unitsIdx = header.indexOf('Units Ordered');
+
+  if (salesIdx < 0 || unitsIdx < 0) {
+    return {
+      totalRows: lines.length - 1,
+      sellingRows: 0,
+      zeroRows: lines.length - 1,
+      summary: 'CSV missing required BusinessReport columns: Ordered Product Sales / Units Ordered',
+    };
+  }
+
+  const totalRows = lines.length - 1;
+  let sellingRows = 0;
+  let zeroRows = 0;
+
+  for (let i = 1; i < lines.length; i += 1) {
+    const cols = parseCsvLine(lines[i]);
+    const sales = parseNum(cols[salesIdx] ?? '');
+    const units = parseNum(cols[unitsIdx] ?? '');
+    if (sales > 0 || units > 0) sellingRows += 1;
+    else zeroRows += 1;
+  }
+
+  return {
+    totalRows,
+    sellingRows,
+    zeroRows,
+    summary: `BusinessReport CSV processed · ${totalRows} total rows · ${sellingRows} selling rows · ${zeroRows} zero rows`,
+  };
+}
+
+export async function persistBusinessReportCsvBuffer(company: string, buffer: Buffer) {
+  const dir = COMPANY_DIRS[company];
+  if (!dir) throw new Error('Invalid company');
+
+  const today = new Date().toISOString().slice(0, 10);
+  const blobLatest = `${company}/BusinessReport-latest.csv`;
+  const blobBackup = `${company}/BusinessReport-${today}.csv`;
+
+  if (process.env.BLOB_READ_WRITE_TOKEN) {
+    const { url } = await put(blobLatest, buffer, {
+      access: 'private',
+      addRandomSuffix: false,
+      allowOverwrite: true,
+      contentType: CSV_CONTENT_TYPE,
+    });
+
+    await put(blobBackup, buffer, {
+      access: 'private',
+      addRandomSuffix: false,
+      allowOverwrite: true,
+      contentType: CSV_CONTENT_TYPE,
+    });
+
+    return {
+      storage: 'blob' as const,
+      url,
+      saved: blobLatest,
+      backup: blobBackup,
+    };
+  }
+
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('Blob storage not configured — add BLOB_READ_WRITE_TOKEN in environment variables.');
+  }
+
+  const dataDir = path.join(process.cwd(), 'data', dir);
+  if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
+
+  const latestPath = path.join(dataDir, 'BusinessReport-latest.csv');
+  const backupPath = path.join(dataDir, `BusinessReport-${today}.csv`);
+  fs.writeFileSync(latestPath, buffer);
+  fs.writeFileSync(backupPath, buffer);
+
+  return {
+    storage: 'local' as const,
+    saved: `data/${dir}/BusinessReport-latest.csv`,
+    backup: `data/${dir}/BusinessReport-${today}.csv`,
   };
 }
 

@@ -7,7 +7,9 @@ import TableChartToggle from '@/components/TableChartToggle';
 import TrendChart, { type ChartMetric, type ChartDataPoint, type ChartNote } from '@/components/TrendChart';
 import ImpactView from '@/components/ImpactView';
 import SortableTable from '@/components/SortableTable';
+import ExpandableAsinList from '@/components/ExpandableAsinList';
 import { parseSomarshData } from '@/lib/parseSomarsh';
+import { parseSomarshAsinPerformance } from '@/lib/parseSomarshBusinessReport';
 import { readNotes, type Note } from '@/lib/notes';
 import { wowPct, fmtDollar, fmtPct, fmtRoas } from '@/lib/parseExcel';
 
@@ -113,11 +115,18 @@ function generateWinsAlerts(curr: {
 export default async function SoMarshPage() {
   let data;
   let parseError: string | null = null;
+  let asinData: Awaited<ReturnType<typeof parseSomarshAsinPerformance>> | null = null;
+  let asinError: string | null = null;
 
   try {
     data = await parseSomarshData();
   } catch (err) {
     parseError = err instanceof Error ? err.message : 'Failed to load data';
+  }
+  try {
+    asinData = await parseSomarshAsinPerformance();
+  } catch (err) {
+    asinError = err instanceof Error ? err.message : 'Failed to load ASIN business report';
   }
 
   const today = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -295,6 +304,68 @@ export default async function SoMarshPage() {
             </ul>
           </div>
         </div>
+
+        <SectionTitle>📦 ASINs Selling Well (Business Report)</SectionTitle>
+        {asinData ? (
+          <>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+              <ExpandableAsinList
+                title="Top Revenue ASINs"
+                titleClassName="text-[#FFC220]"
+                rows={asinData.topSellers}
+                mode="revenue"
+                initialCount={5}
+              />
+              <ExpandableAsinList
+                title="High Conversion ASINs (Sessions ≥ 30)"
+                titleClassName="text-[#22C55E]"
+                rows={asinData.topConverters}
+                mode="conversion"
+                initialCount={5}
+              />
+            </div>
+
+            <div className="bg-dash-card border border-white/[0.08] rounded-lg overflow-hidden mb-6">
+              <SortableTable
+                columns={[
+                  { key: 'childAsin', label: 'Child ASIN', type: 'asin_link' },
+                  { key: 'parentAsin', label: 'Parent ASIN', type: 'asin_link' },
+                  { key: 'title', label: 'Title' },
+                  { key: 'orderedProductSales', label: 'Sales', align: 'right', type: 'currency' },
+                  { key: 'unitsOrdered', label: 'Units', align: 'right', type: 'number' },
+                  { key: 'totalOrderItems', label: 'Orders', align: 'right', type: 'number' },
+                  { key: 'sessions', label: 'Sessions', align: 'right', type: 'number' },
+                  { key: 'unitSessionPct', label: 'Unit Session %', align: 'right', type: 'percent' },
+                  { key: 'buyBoxPct', label: 'Buy Box %', align: 'right', type: 'percent' },
+                ]}
+                rows={asinData.topSellers.map((row) => ({
+                  childAsin: row.childAsin,
+                  parentAsin: row.parentAsin,
+                  title: row.title,
+                  orderedProductSales: row.orderedProductSales,
+                  unitsOrdered: row.unitsOrdered,
+                  totalOrderItems: row.totalOrderItems,
+                  sessions: row.sessions,
+                  unitSessionPct: row.unitSessionPct,
+                  buyBoxPct: row.buyBoxPct,
+                }))}
+                rowKey="childAsin"
+                defaultSortKey="orderedProductSales"
+                defaultSortDir="desc"
+                pageSize={50}
+              />
+            </div>
+
+            <p className="text-[11px] font-mono text-gray-500 mb-6">
+              Parsed file: {asinData.sourceFileName} · Total rows: {formatNumber(asinData.totalRows)} · Selling rows (sales {'>'} 0 or units {'>'} 0): {formatNumber(asinData.filteredSellingRows)} · Zero rows: {formatNumber(asinData.zeroRows)}.
+            </p>
+          </>
+        ) : (
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-amber-900 mb-6">
+            <p className="font-semibold mb-1">ASIN business report unavailable</p>
+            <p className="text-[13px] text-amber-700">{asinError}</p>
+          </div>
+        )}
 
         <NotesSection company="somarsh" initialNotes={notes} />
 
