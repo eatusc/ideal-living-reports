@@ -1,5 +1,4 @@
-import fs from 'fs';
-import path from 'path';
+import { getBusinessReportCsvBuffer } from '@/lib/blob';
 
 export interface SomarshAsinPerformanceRow {
   parentAsin: string;
@@ -71,27 +70,12 @@ function cleanPercent(raw: string): number | null {
   return Number.isFinite(value) ? value / 100 : null;
 }
 
-function pickCsvPath(): string {
-  const candidates = [
-    process.env.SOMARSH_BUSINESS_REPORT_CSV_PATH,
-    path.join(process.cwd(), 'data', 'somarsh', 'BusinessReport-latest.csv'),
-  ].filter((v): v is string => !!v && v.trim().length > 0);
-
-  for (const candidate of candidates) {
-    if (fs.existsSync(candidate)) return candidate;
-  }
-
-  throw new Error(
-    'SoMarsh business report CSV not found. Set SOMARSH_BUSINESS_REPORT_CSV_PATH or place file at data/somarsh/BusinessReport-latest.csv.'
-  );
-}
-
-function parseRows(csvPath: string): {
+function parseRowsFromBuffer(buffer: Buffer): {
   rows: SomarshAsinPerformanceRow[];
   totalRows: number;
   zeroRows: number;
 } {
-  const raw = fs.readFileSync(csvPath, 'utf8');
+  const raw = buffer.toString('utf8');
   const lines = raw.split(/\r?\n/).filter((line) => line.trim().length > 0);
   if (lines.length < 2) {
     return { rows: [], totalRows: 0, zeroRows: 0 };
@@ -147,8 +131,11 @@ function parseRows(csvPath: string): {
 }
 
 export async function parseSomarshAsinPerformance(): Promise<SomarshAsinPerformanceSummary> {
-  const sourcePath = pickCsvPath();
-  const { rows, totalRows, zeroRows } = parseRows(sourcePath);
+  const company = 'somarsh';
+  const sourcePath = `${company}/BusinessReport-latest.csv`;
+  const sourceFileName = 'BusinessReport-latest.csv';
+  const buffer = await getBusinessReportCsvBuffer(company);
+  const { rows, totalRows, zeroRows } = parseRowsFromBuffer(buffer);
 
   const topSellers = [...rows]
     .sort((a, b) => {
@@ -172,7 +159,7 @@ export async function parseSomarshAsinPerformance(): Promise<SomarshAsinPerforma
 
   return {
     sourcePath,
-    sourceFileName: path.basename(sourcePath),
+    sourceFileName,
     totalRows,
     filteredSellingRows: rows.length,
     zeroRows,
