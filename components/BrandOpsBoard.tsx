@@ -396,7 +396,12 @@ export default function BrandOpsBoard({ initialGoals, signals, awareness }: Bran
               {filteredSignals.map((signal) => (
                 <tr key={signal.id} className="border-b border-slate-100 align-top">
                   <td className="py-2 pr-3 text-slate-800">
-                    <Link href={signal.sourcePage} className="text-blue-700 hover:text-blue-900">
+                    <Link
+                      href={signal.sourcePage}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-700 hover:text-blue-900"
+                    >
                       {signal.brandLabel}
                     </Link>
                   </td>
