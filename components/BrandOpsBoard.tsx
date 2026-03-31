@@ -277,7 +277,12 @@ export default function BrandOpsBoard({ initialGoals, signals, awareness }: Bran
                 )}
                 <div className="text-[12px] text-slate-600 mb-1">Action: {signal.suggestedAction}</div>
                 <div className="text-[12px] text-slate-500">
-                  <Link href={signal.sourcePage} className="text-blue-700 hover:text-blue-900">
+                  <Link
+                    href={signal.sourcePage}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-700 hover:text-blue-900"
+                  >
                     Open source report
                   </Link>
                 </div>
