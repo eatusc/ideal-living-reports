@@ -48,6 +48,19 @@ Each report page has an **Upload** button at the top:
 
 No rebuild or deployment needed — the app reads the file on every page load.
 
+### Storage Behavior (Dev vs Production)
+
+- **Local development (no `BLOB_READ_WRITE_TOKEN`)**: files are read/written from local `data/` folders.
+- **Production (with `BLOB_READ_WRITE_TOKEN`)**: files are read/written from **Vercel Blob**.
+  - Example Excel keys: `somarsh/latest.xlsx`, `rpd-walmart/latest.xlsx`
+  - SoMarsh BusinessReport CSV key: `somarsh/BusinessReport-latest.csv`
+
+### SoMarsh BusinessReport CSV
+
+- On `/somarsh`, Data Source upload accepts both Excel and CSV.
+- CSV upload is intended for Amazon Business Report exports and filename should include `BusinessReport` (example: `BusinessReport-3-30-26.csv`).
+- In production, this CSV is parsed from Blob key `somarsh/BusinessReport-latest.csv`.
+
 ## Campaign Notes
 
 Each report has a **Campaign Notes** section at the bottom. Notes are stored as JSON in `data/notes/[company].json`.
